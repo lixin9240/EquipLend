@@ -19,12 +19,12 @@ class Device extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
-        'name',
-        'category',
-        'description',
-        'total_qty',
-        'available_qty',
-        'status',
+        'name',// 设备名称
+        'category',// 设备分类
+        'description',// 设备描述
+        'total_qty',// 总库存
+        'available_qty',// 可借数量
+        'status',// 设备状态
     ];
 
     protected $casts = [
