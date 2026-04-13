@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             // 基础字段
-            $table->unsignedInteger('id')->primary()->autoIncrement();
+            $table->id();
             $table->string('account', 50)->unique(); // 唯一索引：登录账号
             $table->string('name', 30)->nullable(false); // 真实姓名
             $table->string('password', 255)->nullable(false); // bcrypt加密
