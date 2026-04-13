@@ -20,11 +20,11 @@ class User extends Authenticatable
     protected $keyType = 'int';
 
     protected $fillable = [
-        'account',
-        'name',
-        'password',
-        'role',
-        'email',
+        'account',// 账号
+        'name',// 姓名
+        'password',// 密码
+        'role',// 角色（学生 / 管理员）
+        'email',// 邮箱
     ];
 
     protected $hidden = [
