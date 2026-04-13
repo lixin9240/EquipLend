@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('devices', function (Blueprint $table) {
             // 基础字段
-            $table->unsignedInteger('id')->primary()->autoIncrement();
+            $table->id();
             $table->string('name', 100)->nullable(false); // 设备名称
             $table->string('category', 50)->nullable(false); // 设备分类
             $table->text('description')->nullable(true); // 设备描述

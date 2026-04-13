@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('bookings', function (Blueprint $table) {
             // 基础字段
-            $table->unsignedInteger('id')->primary()->autoIncrement();
+            $table->id();
             $table->unsignedInteger('user_id')->nullable(false); // 关联用户
             $table->unsignedInteger('device_id')->nullable(false); // 关联设备
             $table->date('borrow_start')->nullable(false); // 借用开始日期
