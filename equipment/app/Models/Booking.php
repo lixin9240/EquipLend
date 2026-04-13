@@ -19,16 +19,16 @@ class Booking extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
-        'user_id',
-        'device_id',
-        'borrow_start',
-        'borrow_end',
-        'purpose',
-        'status',
-        'reason',
+        'user_id',// 用户ID
+        'device_id',// 设备ID
+        'borrow_start',// 借用开始日期
+        'borrow_end',// 借用结束日期
+        'purpose',// 借用目的
+        'status',// 状态
+        'reason',// 拒绝原因
     ];
 
-    protected $casts = [
+    protected $casts = [ // 类型转换
         'borrow_start' => 'date',
         'borrow_end' => 'date',
         'created_at' => 'datetime',
