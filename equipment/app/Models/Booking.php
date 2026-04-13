@@ -36,6 +36,48 @@ class Booking extends Model
         'deleted_at' => 'datetime',
     ];
 
+    protected $dates = ['borrow_start', 'borrow_end', 'created_at', 'updated_at', 'deleted_at'];
+
+    /**
+     * 获取创建时间（北京时间）
+     */
+    public function getCreatedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
+    /**
+     * 获取更新时间（北京时间）
+     */
+    public function getUpdatedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
+    /**
+     * 获取删除时间（北京时间）
+     */
+    public function getDeletedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
+    /**
+     * 获取借用开始日期（北京时间）
+     */
+    public function getBorrowStartAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
+    /**
+     * 获取借用结束日期（北京时间）
+     */
+    public function getBorrowEndAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
     // 状态常量
     const STATUS_PENDING = 'pending';
     const STATUS_APPROVED = 'approved';

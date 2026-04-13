@@ -35,6 +35,32 @@ class Device extends Model
         'deleted_at' => 'datetime',
     ];
 
+    protected $dates = ['created_at', 'updated_at', 'deleted_at'];
+
+    /**
+     * 获取创建时间（北京时间）
+     */
+    public function getCreatedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
+    /**
+     * 获取更新时间（北京时间）
+     */
+    public function getUpdatedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
+    /**
+     * 获取删除时间（北京时间）
+     */
+    public function getDeletedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
     // 状态常量
     const STATUS_AVAILABLE = 'available';
     const STATUS_MAINTENANCE = 'maintenance';

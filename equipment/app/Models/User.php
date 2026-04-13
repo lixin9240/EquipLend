@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Hash;
 
 class User extends Authenticatable
 {
@@ -36,6 +37,40 @@ class User extends Authenticatable
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
+
+    protected $dates = ['created_at', 'updated_at', 'deleted_at'];
+
+    /**
+     * 设置密码时自动哈希加密
+     */
+    public function setPasswordAttribute($value)
+    {
+        $this->attributes['password'] = Hash::make($value);
+    }
+
+    /**
+     * 获取创建时间（北京时间）
+     */
+    public function getCreatedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
+    /**
+     * 获取更新时间（北京时间）
+     */
+    public function getUpdatedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
+
+    /**
+     * 获取删除时间（北京时间）
+     */
+    public function getDeletedAtAttribute($value)
+    {
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+    }
 
     // 角色常量
     const ROLE_STUDENT = 'student';
