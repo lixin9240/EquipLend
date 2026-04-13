@@ -12,8 +12,35 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('bookings', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            // 基础字段
+            $table->unsignedInteger('id')->primary()->autoIncrement();
+            $table->unsignedInteger('user_id')->nullable(false); // 关联用户
+            $table->unsignedInteger('device_id')->nullable(false); // 关联设备
+            $table->date('borrow_start')->nullable(false); // 借用开始日期
+            $table->date('borrow_end')->nullable(false); // 借用结束日期
+            $table->text('purpose')->nullable(true); // 借用用途
+            $table->enum('status', ['pending', 'approved', 'rejected', 'returned'])
+                  ->default('pending')->nullable(false); // 申请状态
+            $table->string('reason')->nullable(true); // 拒绝原因
+
+            // 时间戳 & 软删除
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrentOnUpdate();
+            $table->timestamp('deleted_at')->nullable(true);
+
+            // 外键约束
+            $table->foreign('user_id')
+                  ->references('id')->on('users')
+                  ->onDelete('cascade'); // 用户删除则级联删除记录
+            $table->foreign('device_id')
+                  ->references('id')->on('devices')
+                  ->onDelete('cascade'); // 设备删除则级联删除记录
+
+            // 索引
+            $table->index('user_id'); // 个人借用记录查询
+            $table->index('device_id'); // 设备借用记录查询
+            $table->index('status'); // 状态筛选
+            $table->index(['user_id', 'device_id', 'status']); // 借用冲突校验复合索引
         });
     }
 
@@ -22,6 +49,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // 先删外键再删表，避免约束报错
+        Schema::table('bookings', function (Blueprint $table) {
+            $table->dropForeign(['user_id']);
+            $table->dropForeign(['device_id']);
+        });
         Schema::dropIfExists('bookings');
     }
 };

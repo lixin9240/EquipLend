@@ -12,28 +12,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
-            $table->timestamps();
-        });
+            // 基础字段
+            $table->unsignedInteger('id')->primary()->autoIncrement();
+            $table->string('account', 50)->unique(); // 唯一索引：登录账号
+            $table->string('name', 30)->nullable(false); // 真实姓名
+            $table->string('password', 255)->nullable(false); // bcrypt加密
+            $table->enum('role', ['student', 'admin'])->nullable(false); // 角色
+            $table->string('email', 100)->nullable(true); // 联系方式
+            $table->string('remember_token', 100)->nullable(true); // Laravel记住我
 
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
-        });
+            // 时间戳 & 软删除
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrentOnUpdate();
+            $table->timestamp('deleted_at')->nullable(true);
 
-        Schema::create('sessions', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->longText('payload');
-            $table->integer('last_activity')->index();
+            // 索引
+            $table->index('role'); // 按角色筛选索引
         });
     }
 
@@ -43,7 +37,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
-        Schema::dropIfExists('sessions');
     }
 };
