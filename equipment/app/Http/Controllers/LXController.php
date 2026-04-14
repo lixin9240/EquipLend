@@ -108,9 +108,9 @@ class LXController extends \Illuminate\Routing\Controller
     
     /**
      * 审核借用申请（管理员功能）
-     * POST /api/admin/bookings/{id}/review
+     * PATCH /api/admin/bookings/{id}/audit
      */
-    public function reviewBooking(Request $request, $id): JsonResponse
+    public function auditBooking(Request $request, $id): JsonResponse
     {
         // JWT 认证检查
         $user = $this->getCurrentUser();
