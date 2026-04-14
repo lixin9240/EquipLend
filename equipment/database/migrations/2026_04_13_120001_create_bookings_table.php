@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('bookings', function (Blueprint $table) {
             // 基础字段
             $table->id();
-            $table->unsignedInteger('user_id')->nullable(false); // 关联用户
-            $table->unsignedInteger('device_id')->nullable(false); // 关联设备
+            $table->unsignedBigInteger('user_id')->nullable(false); // 关联用户
+            $table->unsignedBigInteger('device_id')->nullable(false); // 关联设备
             $table->date('borrow_start')->nullable(false); // 借用开始日期
             $table->date('borrow_end')->nullable(false); // 借用结束日期
             $table->text('purpose')->nullable(true); // 借用用途
