@@ -115,4 +115,30 @@ class LZWController extends Controller
             'data' => null
         ]);
     }
+
+    public function adminUsers(Request $request)
+    {
+        // 1. 获取当前登录用户
+        $user = $request->user();
+
+        // 2. 权限校验：必须是管理员
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'code' => 403,
+                'message' => '权限不足，仅管理员可访问此接口',
+                'data' => null
+            ], 403);
+        }
+
+        // 3. 管理员权限通过，查询所有用户（排除密码等敏感字段）
+        $users = \App\Models\User::select('id', 'account', 'name', 'email', 'role', 'created_at')
+            ->get();
+
+        // 4. 返回成功响应
+        return response()->json([
+            'code' => 200,
+            'message' => '获取用户列表成功',
+            'data' => $users
+        ]);
+    }
 }
