@@ -6,65 +6,71 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class LZWController extends Controller
 {
     /**
      * 用户注册
-     * 接口: /api/register
+     * 接口: /api/auth/register
      */
     public function register(Request $request)
     {
-        // 数据验证
         $validated = $request->validate([
-            'account' => 'required|string|max:50|unique:users',
-            'name' => 'required|string|max:30',
-            'email' => 'required|string|email|max:100|unique:users',
-            'password' => 'required|string|confirmed|min:6',
+            'account' => 'required|string|unique:users',
+            'name' => 'required|string',
+            'password' => 'required|string|min:6',
+            'email' => 'nullable|email',
             'role' => 'nullable|string|in:student,admin',
         ]);
 
-        // 创建用户
+        // 检查账号是否重复
+        if (User::where('account', $validated['account'])->exists()) {
+            return response()->json([
+                'code' => 400,
+                'message' => '账号已存在',
+                'data' => null
+            ]);
+        }
+
         $user = User::create([
             'account' => $validated['account'],
             'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $validated['password'],
+            'password' => Hash::make($validated['password']),
+            'email' => $validated['email'] ?? null,
             'role' => $validated['role'] ?? 'student',
         ]);
-
-        // 生成 token
-        $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
             'code' => 200,
             'message' => '注册成功',
             'data' => [
-                'user' => $user,
-                'token' => $token
+                'id' => $user->id,
+                'account' => $user->account,
+                'name' => $user->name,
+                'role' => $user->role,
             ]
-        ], 201);
+        ]);
     }
 
     /**
      * 用户登录
-     * 接口: /api/login
+     * 接口: /api/auth/login
      */
     public function login(Request $request)
     {
-        // 验证账号密码
-        $credentials = $request->validate([
+        $validated = $request->validate([
             'account' => 'required|string',
             'password' => 'required|string',
+            'remember' => 'nullable|boolean',
         ]);
 
-        // 查询用户
-        $user = User::where('account', $credentials['account'])->first();
+        $user = User::where('account', $validated['account'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'account' => ['账号或密码不正确'],
+        if (!$user || !Hash::check($validated['password'], $user->password)) {
+            return response()->json([
+                'code' => 400,
+                'message' => '账号或密码错误',
+                'data' => null
             ]);
         }
 
@@ -74,67 +80,71 @@ class LZWController extends Controller
             'code' => 200,
             'message' => '登录成功',
             'data' => [
-                'user' => $user,
-                'token' => $token
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'account' => $user->account,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                ]
             ]
         ]);
     }
 
     /**
-     * 获取当前登录用户信息
-     * 接口: /api/me
+     * 获取当前用户信息
+     * 接口: /api/auth/me
      */
     public function me(Request $request)
     {
         $user = $request->user();
 
-        // 判断是否管理员
-        $isAdmin = $user->role === 'admin';
-
         return response()->json([
             'code' => 200,
-            'message' => '获取用户信息成功',
+            'message' => '获取成功',
             'data' => [
-                'user' => $user,
-                'is_admin' => $isAdmin, // 明确告诉前端是不是管理员
+                'id' => $user->id,
+                'account' => $user->account,
+                'name' => $user->name,
+                'role' => $user->role,
+                'email' => $user->email,
             ]
         ]);
     }
 
     /**
      * 退出登录
-     * 接口: /api/logout
+     * 接口: /api/auth/logout
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $request->user()->tokens()->delete();
 
         return response()->json([
             'code' => 200,
-            'message' => '退出登录成功',
+            'message' => '退出成功',
             'data' => null
         ]);
     }
 
+    /**
+     * 管理员获取所有用户列表
+     * 接口: /api/admin/users
+     */
     public function adminUsers(Request $request)
     {
-        // 1. 获取当前登录用户
         $user = $request->user();
 
-        // 2. 权限校验：必须是管理员
         if ($user->role !== 'admin') {
             return response()->json([
                 'code' => 403,
-                'message' => '权限不足，仅管理员可访问此接口',
+                'message' => '权限不足，仅管理员可访问',
                 'data' => null
             ], 403);
         }
 
-        // 3. 管理员权限通过，查询所有用户（排除密码等敏感字段）
-        $users = \App\Models\User::select('id', 'account', 'name', 'email', 'role', 'created_at')
-            ->get();
+        $users = User::select('id', 'account', 'name', 'email', 'role', 'created_at')->get();
 
-        // 4. 返回成功响应
         return response()->json([
             'code' => 200,
             'message' => '获取用户列表成功',
