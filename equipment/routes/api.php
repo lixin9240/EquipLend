@@ -2,22 +2,41 @@
 
 use App\Http\Controllers\LXController;
 use App\Http\Controllers\LZWController;
+use App\Http\Controllers\WLJController;
 use Illuminate\Support\Facades\Route;
 
-// 公开接口（不需要token）
-// 用户注册
-Route::post('/register', [LZWcontroller::class, 'register']);
-//用户登录
-Route::post('/login', [LZWcontroller::class, 'login']);
+// ======================
+// 用户认证接口
+// ======================
+Route::post('/auth/register', [LZWController::class, 'register']);
+Route::post('/auth/login', [LZWController::class, 'login']);
+Route::post('/auth/forget-password', [LZWController::class, 'forgetPassword']);
 
-// 需要登录认证的接口
+// 需要登录
 Route::middleware('auth:sanctum')->group(function () {
-    //获取当前用户
-    Route::get('/me', [LZWcontroller::class, 'me']); 
-    // 退出登录
-    Route::post('/logout', [LZWcontroller::class, 'logout']); //
-});
+    Route::get('/auth/me', [LZWController::class, 'me']);
+    Route::post('/auth/logout', [LZWController::class, 'logout']);
+    Route::put('/auth/profile', [LZWController::class, 'updateProfile']);
 
+
+    // 管理员接口
+    Route::get('/admin/users', [LZWController::class, 'adminUsers']);
+
+    // =======================================
+    // 王LJ负责的模块
+    // =======================================
+    
+    // 设备大厅模块
+    Route::get('/devices', [WLJController::class, 'getDevices']);
+    Route::get('/devices/{id}', [WLJController::class, 'getDevice']);
+
+    // 借用申请模块
+    Route::post('/bookings', [WLJController::class, 'createBooking']);
+
+    // 我的借用记录模块
+    Route::get('/bookings/my', [WLJController::class, 'getMyBookings']);
+    Route::patch('/bookings/{id}/return', [WLJController::class, 'returnBooking']);
+});
 
 // 需要 JWT 认证的路由组
 Route::group(['middleware' => 'api'], function () {
