@@ -6,16 +6,19 @@ use Illuminate\Support\Facades\Route;
 
 // 公开接口（不需要token）
 // 用户注册
-Route::post('/register', [LZWcontroller::class, 'register']);
+Route::post('/register', [LZWController::class, 'register']);
 //用户登录
-Route::post('/login', [LZWcontroller::class, 'login']);
+Route::post('/login', [LZWController::class, 'login']);
 
 // 需要登录认证的接口
 Route::middleware('auth:sanctum')->group(function () {
     //获取当前用户
-    Route::get('/me', [LZWcontroller::class, 'me']);
+    Route::get('/me', [LZWController::class, 'me']);
     // 退出登录
-    Route::post('/logout', [LZWcontroller::class, 'logout']); //
+    Route::post('/logout', [LZWController::class, 'logout']);
+    // 示例：只有管理员能查看所有用户
+    Route::get('/admin/users', [LZWController::class, 'adminUsers'])
+        ->middleware('auth:sanctum', 'check.admin');//
 });
 
 
