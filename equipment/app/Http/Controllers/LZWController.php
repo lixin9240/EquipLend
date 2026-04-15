@@ -3,111 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\VerificationCode;
-use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class LZWController extends Controller
 {
-    protected $smsService;
-    
-    public function __construct(SmsService $smsService)
-    {
-        $this->smsService = $smsService;
-    }
     /**
-     * 发送手机验证码
-     * 接口: POST /api/auth/send-code
-     */
-    public function sendVerificationCode(Request $request)
-    {
-        $validated = $request->validate([
-            'phone' => 'required|string|regex:/^1[3-9]\d{9}$/',
-            'type' => 'nullable|string|in:register',
-        ]);
-
-        $phone = $validated['phone'];
-        $type = $validated['type'] ?? 'register';
-
-        // 检查是否频繁发送（60秒内只能发一次）
-        $lastCode = VerificationCode::where('phone', $phone)
-            ->where('type', $type)
-            ->where('created_at', '>=', now()->subSeconds(60))
-            ->first();
-
-        if ($lastCode) {
-            return response()->json([
-                'code' => 429,
-                'message' => '发送过于频繁，请60秒后再试',
-                'data' => null
-            ], 429);
-        }
-
-        // 生成6位随机验证码
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // 调用短信服务发送
-        $result = $this->smsService->sendVerificationCode($phone, $code);
-        
-        if (!$result['success']) {
-            return response()->json([
-                'code' => 500,
-                'message' => $result['message'],
-                'data' => null
-            ], 500);
-        }
-
-        // 保存验证码到数据库
-        VerificationCode::create([
-            'phone' => $phone,
-            'code' => $code,
-            'type' => $type,
-            'expired_at' => now()->addMinutes(config('sms.code_expire', 5)),
-            'is_used' => false,
-        ]);
-
-        // 开发环境返回验证码，生产环境不返回
-        $data = ['phone' => $phone];
-        if (config('app.env') !== 'production') {
-            $data['code'] = $code;
-        }
-
-        return response()->json([
-            'code' => 200,
-            'message' => '验证码发送成功',
-            'data' => $data
-        ]);
-    }
-
-    /**
-     * 校验验证码
-     */
-    private function verifyCode(string $phone, string $code, string $type = 'register'): bool
-    {
-        $verificationCode = VerificationCode::where('phone', $phone)
-            ->where('code', $code)
-            ->where('type', $type)
-            ->where('is_used', false)
-            ->where('expired_at', '>', now())
-            ->latest()
-            ->first();
-
-        if (!$verificationCode) {
-            return false;
-        }
-
-        // 标记为已使用
-        $verificationCode->is_used = true;
-        $verificationCode->save();
-
-        return true;
-    }
-
-    /**
-     * 用户注册（带验证码校验）
+     * 用户注册
      * 接口: POST /api/auth/register
      */
     public function register(Request $request)
@@ -116,20 +19,9 @@ class LZWController extends Controller
             'account' => 'required|string|unique:users',
             'name' => 'required|string',
             'password' => 'required|string|min:6',
-            'phone' => 'required|string|regex:/^1[3-9]\d{9}$/',
-            'code' => 'required|string|size:6',
             'email' => 'nullable|email',
             'role' => 'nullable|string|in:student,admin',
         ]);
-
-        // 校验验证码
-        if (!$this->verifyCode($validated['phone'], $validated['code'], 'register')) {
-            return response()->json([
-                'code' => 400,
-                'message' => '验证码错误或已过期',
-                'data' => null
-            ]);
-        }
 
         // 检查账号是否重复
         if (User::where('account', $validated['account'])->exists()) {
@@ -140,20 +32,10 @@ class LZWController extends Controller
             ]);
         }
 
-        // 检查手机号是否已被注册
-        if (User::where('phone', $validated['phone'])->exists()) {
-            return response()->json([
-                'code' => 400,
-                'message' => '手机号已被注册',
-                'data' => null
-            ]);
-        }
-
         $user = User::create([
             'account' => $validated['account'],
             'name' => $validated['name'],
             'password' => Hash::make($validated['password']),
-            'phone' => $validated['phone'],
             'email' => $validated['email'] ?? null,
             'role' => $validated['role'] ?? 'student',
         ]);
