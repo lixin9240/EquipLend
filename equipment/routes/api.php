@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 // ======================
 // 用户认证接口
 // ======================
+Route::post('/auth/send-code', [LZWController::class, 'sendVerificationCode']);// 发送验证码
 Route::post('/auth/register', [LZWController::class, 'register']);
 Route::post('/auth/login', [LZWController::class, 'login']);
 Route::post('/auth/forget-password', [LZWController::class, 'forgetPassword']);

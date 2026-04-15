@@ -27,6 +27,7 @@ class User extends Authenticatable
         'name',// 姓名
         'password',// 密码
         'role',// 角色（学生 / 管理员）
+        'phone',// 手机号
         'email',// 邮箱
     ];
 

@@ -16,9 +16,10 @@ return new class extends Migration
             $table->id();
             $table->string('account', 50)->unique(); // 唯一索引：登录账号
             $table->string('name', 30)->nullable(false); // 真实姓名
-            $table->string('password', 255)->nullable(false); // bcrypt加密
+            $table->string('password', 255)->nullable(false); 
             $table->enum('role', ['student', 'admin'])->nullable(false); // 角色
-            $table->string('email', 100)->nullable(true); // 联系方式
+            $table->string('phone', 20)->nullable(true)->unique(); // 手机号
+            $table->string('email', 100)->nullable(true); // 邮箱
             $table->string('remember_token', 100)->nullable(true); // Laravel记住我
 
             // 时间戳 & 软删除
