@@ -86,10 +86,18 @@ class LZWController extends Controller
      */
     public function me(Request $request)
     {
+        $user = $request->user();
+
+        // 判断是否管理员
+        $isAdmin = $user->role === 'admin';
+
         return response()->json([
             'code' => 200,
             'message' => '获取用户信息成功',
-            'data' => $request->user()
+            'data' => [
+                'user' => $user,
+                'is_admin' => $isAdmin, // 明确告诉前端是不是管理员
+            ]
         ]);
     }
 
