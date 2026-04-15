@@ -13,7 +13,7 @@ Route::post('/login', [LZWcontroller::class, 'login']);
 // 需要登录认证的接口
 Route::middleware('auth:sanctum')->group(function () {
     //获取当前用户
-    Route::get('/me', [LZWcontroller::class, 'me']); 
+    Route::get('/me', [LZWcontroller::class, 'me']);
     // 退出登录
     Route::post('/logout', [LZWcontroller::class, 'logout']); //
 });
