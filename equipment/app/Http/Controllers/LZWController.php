@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\VerificationCode;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Hash;
@@ -11,6 +12,12 @@ use Illuminate\Support\Str;
 
 class LZWController extends Controller
 {
+    protected $smsService;
+    
+    public function __construct(SmsService $smsService)
+    {
+        $this->smsService = $smsService;
+    }
     /**
      * 发送手机验证码
      * 接口: POST /api/auth/send-code
@@ -42,24 +49,36 @@ class LZWController extends Controller
         // 生成6位随机验证码
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
+        // 调用短信服务发送
+        $result = $this->smsService->sendVerificationCode($phone, $code);
+        
+        if (!$result['success']) {
+            return response()->json([
+                'code' => 500,
+                'message' => $result['message'],
+                'data' => null
+            ], 500);
+        }
+
         // 保存验证码到数据库
         VerificationCode::create([
             'phone' => $phone,
             'code' => $code,
             'type' => $type,
-            'expired_at' => now()->addMinutes(5), // 5分钟有效期
+            'expired_at' => now()->addMinutes(config('sms.code_expire', 5)),
             'is_used' => false,
         ]);
 
-        // TODO: 这里接入短信服务商（阿里云/腾讯云）发送真实短信
-        // 目前直接返回验证码（仅用于测试）
+        // 开发环境返回验证码，生产环境不返回
+        $data = ['phone' => $phone];
+        if (config('app.env') !== 'production') {
+            $data['code'] = $code;
+        }
+
         return response()->json([
             'code' => 200,
             'message' => '验证码发送成功',
-            'data' => [
-                'phone' => $phone,
-                'code' => $code, // 生产环境请删除这行
-            ]
+            'data' => $data
         ]);
     }
 
