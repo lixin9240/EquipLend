@@ -151,4 +151,92 @@ class LZWController extends Controller
             'data' => $users
         ]);
     }
+    /**
+     * 忘记密码 / 重置密码
+     * 接口: /api/auth/forget-password
+     */
+    public function forgetPassword(Request $request)
+    {
+        // 1. 验证参数
+        $validated = $request->validate([
+            'account' => 'required|string',
+            'email' => 'required|email',
+            'password' => 'required|string|min:6',
+        ]);
+
+        // 2. 查询用户是否存在
+        $user = User::where('account', $validated['account'])->first();
+
+        if (!$user) {
+            return response()->json([
+                'code' => 400,
+                'message' => '账号不存在',
+                'data' => null
+            ]);
+        }
+
+        // 3. 校验邮箱是否一致
+        if ($user->email !== $validated['email']) {
+            return response()->json([
+                'code' => 400,
+                'message' => '邮箱与账号不匹配',
+                'data' => null
+            ]);
+        }
+
+        // 4. 重置密码
+        $user->update([
+            'password' => Hash::make($validated['password'])
+        ]);
+
+        // 5. 返回成功
+        return response()->json([
+            'code' => 200,
+            'message' => '密码重置成功',
+            'data' => null
+        ]);
+    }
+    /**
+     * 修改个人信息
+     * 接口: /api/auth/profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'nullable|string',
+            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:6',
+        ]);
+
+        // 如果传了name就更新
+        if (!empty($validated['name'])) {
+            $user->name = $validated['name'];
+        }
+
+        // 如果传了email就更新
+        if (!empty($validated['email'])) {
+            $user->email = $validated['email'];
+        }
+
+        // 如果传了密码就更新
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $user->save();
+
+        return response()->json([
+            'code' => 200,
+            'message' => '修改成功',
+            'data' => [
+                'id' => $user->id,
+                'account' => $user->account,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]
+        ]);
+    }
 }

@@ -10,11 +10,14 @@ use Illuminate\Support\Facades\Route;
 // ======================
 Route::post('/auth/register', [LZWController::class, 'register']);
 Route::post('/auth/login', [LZWController::class, 'login']);
+Route::post('/auth/forget-password', [LZWController::class, 'forgetPassword']);
 
 // 需要登录
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [LZWController::class, 'me']);
     Route::post('/auth/logout', [LZWController::class, 'logout']);
+    Route::put('/auth/profile', [LZWController::class, 'updateProfile']);
+
 
     // 管理员接口
     Route::get('/admin/users', [LZWController::class, 'adminUsers']);
