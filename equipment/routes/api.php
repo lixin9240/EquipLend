@@ -8,10 +8,9 @@ use Illuminate\Support\Facades\Route;
 
     // 公开接口 
     Route::post('/auth/register', [LZWController::class, 'register']);//注册
-    Route::post('/auth/login', [LZWController::class, 'login']);//登录
+    Route::post('/auth/login', [LZWController::class, 'login']);//登录（需要邮箱验证码）
     Route::post('/auth/forget-password', [LZWController::class, 'forgetPassword']);//忘记密码
     Route::post('/auth/send-email-code', [LZWController::class, 'sendEmailCode']);//发送邮箱验证码
-    Route::post('/auth/verify-email-code', [LZWController::class, 'verifyEmailCode']);//验证邮箱验证码
 
     // 需要认证的接口
     Route::group(['middleware' => 'jwt.auth'], function () {
@@ -37,14 +36,8 @@ use Illuminate\Support\Facades\Route;
     Route::patch('/bookings/{id}/return', [WLJController::class, 'returnBooking']);
     // 获取待审核申请列表
     Route::get('/admin/bookings/pending', [LXController::class, 'getPendingBookings']);
-
-    // 审核借用申请（通过/拒绝）
     Route::patch('/admin/bookings/{id}/audit', [LXController::class, 'auditBooking']);
-
-    // 新增设备
     Route::post('/admin/devices', [LXController::class, 'createDevice']);
-
-    // 编辑设备
     Route::put('/admin/devices/{id}', [LXController::class, 'updateDevice']);
 
     // 下架设备（软删除）

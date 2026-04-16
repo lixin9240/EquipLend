@@ -61,7 +61,7 @@ class EmailVerificationService
 
         // 发送邮件
         try {
-            Mail::send('emails.verification-code', ['code' => $code], function ($message) use ($email) {
+            Mail::send('email.verification-code', ['code' => $code], function ($message) use ($email) {
                 $message->to($email)->subject('【设备借用系统】您的验证码');
             });
 

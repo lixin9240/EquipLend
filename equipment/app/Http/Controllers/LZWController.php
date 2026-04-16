@@ -75,7 +75,7 @@ class LZWController extends Controller
     /**
      * 用户登录
      * 接口: POST /api/auth/login
-     * 说明: 登录不需要token，登录成功后返回token
+     * 说明: 登录需要邮箱验证码验证成功后才能返回token
      */
     public function login(Request $request)
     {
@@ -83,15 +83,11 @@ class LZWController extends Controller
         $validated = $request->validate([
             'account' => 'required|string',
             'password' => 'required|string',
+            'email' => 'required|email',
+            'code' => 'required|string|size:6',
         ]);
 
-        // 准备认证凭据
-        $credentials = [
-            'account' => $validated['account'],
-            'password' => $validated['password'],
-        ];
-
-        // 调试：检查用户是否存在
+        // 1. 检查用户是否存在
         $user = \App\Models\User::where('account', $validated['account'])->first();
         if (!$user) {
             return response()->json([
@@ -101,7 +97,36 @@ class LZWController extends Controller
             ], 401);
         }
 
-        // 尝试使用JWT认证
+        // 2. 验证邮箱是否匹配
+        if ($user->email !== $validated['email']) {
+            return response()->json([
+                'code' => 401,
+                'message' => '邮箱与账号不匹配',
+                'data' => null
+            ], 401);
+        }
+
+        // 3. 验证邮箱验证码（直接从缓存读取，不删除）
+        $codeKey = "email_code:{$validated['email']}:login";
+        $cachedCode = \Illuminate\Support\Facades\Cache::get($codeKey);
+        
+        if ($cachedCode !== $validated['code']) {
+            return response()->json([
+                'code' => 401,
+                'message' => '验证码错误或已过期',
+                'data' => null
+            ], 401);
+        }
+        
+        // 验证成功后删除验证码
+        \Illuminate\Support\Facades\Cache::forget($codeKey);
+
+        // 4. 验证密码
+        $credentials = [
+            'account' => $validated['account'],
+            'password' => $validated['password'],
+        ];
+
         if (!$token = JWTAuth::attempt($credentials)) {
             return response()->json([
                 'code' => 401,
@@ -110,10 +135,7 @@ class LZWController extends Controller
             ], 401);
         }
 
-        // 获取当前认证用户
-        $user = Auth::user();
-
-        // 返回登录成功信息和token
+        // 5. 返回登录成功信息和token
         return response()->json([
             'code' => 200,
             'message' => '登录成功',
@@ -321,10 +343,21 @@ class LZWController extends Controller
      */
     public function sendEmailCode(Request $request)
     {
-        $validated = $request->validate([
-            'email' => 'required|email',
-            'type' => 'nullable|string|in:register,reset_password,bind',
-        ]);
+        // 确保返回 JSON
+        $request->headers->set('Accept', 'application/json');
+
+        try {
+            $validated = $request->validate([
+                'email' => 'required|email',
+                'type' => 'nullable|string|in:register,reset_password,bind,login',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'code' => 422,
+                'message' => '验证失败',
+                'data' => $e->errors()
+            ], 422);
+        }
 
         $email = $validated['email'];
         $type = $validated['type'] ?? 'register';
@@ -343,7 +376,8 @@ class LZWController extends Controller
                 break;
 
             case 'reset_password':
-                // 重置密码时检查邮箱是否存在
+            case 'login':
+                // 重置密码和登录时检查邮箱是否存在
                 if (!User::where('email', $email)->exists()) {
                     return response()->json([
                         'code' => 400,
@@ -355,55 +389,31 @@ class LZWController extends Controller
         }
 
         // 发送验证码
-        $result = $this->emailVerificationService->sendCode($email, $type);
+        try {
+            $result = $this->emailVerificationService->sendCode($email, $type);
 
-        if ($result['success']) {
+            if ($result['success']) {
+                return response()->json([
+                    'code' => 200,
+                    'message' => $result['message'],
+                    'data' => [
+                        'expire_minutes' => $result['expire_minutes']
+                    ]
+                ]);
+            }
+
             return response()->json([
-                'code' => 200,
+                'code' => 400,
                 'message' => $result['message'],
-                'data' => [
-                    'expire_minutes' => $result['expire_minutes']
-                ]
-            ]);
-        }
-
-        return response()->json([
-            'code' => 400,
-            'message' => $result['message'],
-            'data' => null
-        ]);
-    }
-
-    /**
-     * 验证邮箱验证码（仅验证，不执行其他操作）
-     * 接口: POST /api/auth/verify-email-code
-     */
-    public function verifyEmailCode(Request $request)
-    {
-        $validated = $request->validate([
-            'email' => 'required|email',
-            'code' => 'required|string|size:6',
-            'type' => 'nullable|string|in:register,reset_password,bind',
-        ]);
-
-        $email = $validated['email'];
-        $code = $validated['code'];
-        $type = $validated['type'] ?? 'register';
-
-        $isValid = $this->emailVerificationService->verifyCode($email, $code, $type);
-
-        if ($isValid) {
-            return response()->json([
-                'code' => 200,
-                'message' => '验证码正确',
                 'data' => null
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'message' => '服务器错误: ' . $e->getMessage(),
+                'data' => null
+            ], 500);
         }
-
-        return response()->json([
-            'code' => 400,
-            'message' => '验证码错误或已过期',
-            'data' => null
-        ]);
     }
+
 }
