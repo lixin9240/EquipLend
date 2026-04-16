@@ -35,13 +35,12 @@ use Illuminate\Support\Facades\Route;
     Route::get('/bookings/my', [WLJController::class, 'getMyBookings']);
     Route::patch('/bookings/{id}/return', [WLJController::class, 'returnBooking']);
     // 获取待审核申请列表
-    Route::get('/admin/bookings/pending', [LXController::class, 'getPendingBookings']);
-    Route::patch('/admin/bookings/{id}/audit', [LXController::class, 'auditBooking']);
-    Route::post('/admin/devices', [LXController::class, 'createDevice']);
-    Route::put('/admin/devices/{id}', [LXController::class, 'updateDevice']);
-
-    // 下架设备（软删除）
-    Route::delete('/admin/devices/{id}', [LXController::class, 'deleteDevice']);
+    Route::get('/admin/bookings/pending', [LXController::class, 'getPendingBookings']);//获取待审核申请列表
+    Route::patch('/admin/bookings/{id}/audit', [LXController::class, 'auditBooking']);//审核借用申请
+    // 设备管理模块
+    Route::post('/admin/devices', [LXController::class, 'createDevice']);//创建设备
+    Route::put('/admin/devices/{id}', [LXController::class, 'updateDevice']);//更新设备信息
+    Route::delete('/admin/devices/{id}', [LXController::class, 'deleteDevice']);//下架设备（软删除）
 
 });
 
