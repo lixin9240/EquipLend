@@ -1,4 +1,5 @@
 <?php return array (
+<<<<<<< Updated upstream
   'laravel/pail' => 
   array (
     'providers' => 
@@ -20,6 +21,8 @@
       0 => 'Laravel\\Tinker\\TinkerServiceProvider',
     ),
   ),
+=======
+>>>>>>> Stashed changes
   'nesbot/carbon' => 
   array (
     'providers' => 
@@ -27,6 +30,7 @@
       0 => 'Carbon\\Laravel\\ServiceProvider',
     ),
   ),
+<<<<<<< Updated upstream
   'nunomaduro/collision' => 
   array (
     'providers' => 
@@ -34,6 +38,8 @@
       0 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     ),
   ),
+=======
+>>>>>>> Stashed changes
   'nunomaduro/termwind' => 
   array (
     'providers' => 
@@ -41,6 +47,7 @@
       0 => 'Termwind\\Laravel\\TermwindServiceProvider',
     ),
   ),
+<<<<<<< Updated upstream
   'tymon/jwt-auth' => 
   array (
     'aliases' => 
@@ -53,4 +60,6 @@
       0 => 'Tymon\\JWTAuth\\Providers\\LaravelServiceProvider',
     ),
   ),
+=======
+>>>>>>> Stashed changes
 );
