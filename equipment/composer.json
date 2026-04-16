@@ -9,7 +9,6 @@
         "php": "^8.3",
         "alibabacloud/sdk": "^1.8",
         "laravel/framework": "^13.0",
-        "laravel/sanctum": "^5.0",
         "laravel/tinker": "^3.0",
         "tymon/jwt-auth": "^2.3"
     },
@@ -84,5 +83,12 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": {
+        "packagist.org": {
+            "type": "composer",
+            "url": "https://repo.packagist.org",
+            "canonical": false
+        }
+    }
 }
