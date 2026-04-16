@@ -18,11 +18,11 @@ class DatabaseSeeder extends Seeder
     {
         // 创建管理员账号
         User::create([
-            'account' => 'admin',
+            'account' => 'admin123',
             'name' => '系统管理员',
             'password' => 'admin123',  // 会自动哈希加密
             'role' => 'admin',
-            'email' => 'admin@equiplend.com',
+            'email' => '3258599349@qq.com',
         ]);
 
         // 创建测试学生账号1
