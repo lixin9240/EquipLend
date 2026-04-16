@@ -12,13 +12,11 @@ Route::post('/auth/register', [LZWController::class, 'register']);
 Route::post('/auth/login', [LZWController::class, 'login']);
 Route::post('/auth/forget-password', [LZWController::class, 'forgetPassword']);
 
-// 需要登录
-Route::middleware('auth:sanctum')->group(function () {
+//登录
+    Route::group(['middleware' => 'api'], function () {
     Route::get('/auth/me', [LZWController::class, 'me']);
     Route::post('/auth/logout', [LZWController::class, 'logout']);
     Route::put('/auth/profile', [LZWController::class, 'updateProfile']);
-
-
     // 管理员接口
     Route::get('/admin/users', [LZWController::class, 'adminUsers']);
 
@@ -36,10 +34,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // 我的借用记录模块
     Route::get('/bookings/my', [WLJController::class, 'getMyBookings']);
     Route::patch('/bookings/{id}/return', [WLJController::class, 'returnBooking']);
-});
-
-// 需要 JWT 认证的路由组
-Route::group(['middleware' => 'api'], function () {
     // 获取待审核申请列表
     Route::get('/admin/bookings/pending', [LXController::class, 'getPendingBookings']);
 

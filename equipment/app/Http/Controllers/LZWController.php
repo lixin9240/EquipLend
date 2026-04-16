@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class LZWController extends Controller
 {
@@ -61,26 +63,31 @@ class LZWController extends Controller
         $validated = $request->validate([
             'account' => 'required|string',
             'password' => 'required|string',
-            'remember' => 'nullable|boolean',
         ]);
 
-        $user = User::where('account', $validated['account'])->first();
+        $credentials = [
+            'account' => $validated['account'],
+            'password' => $validated['password'],
+        ];
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        if (!$token = JWTAuth::attempt($credentials)) {
             return response()->json([
-                'code' => 400,
+                'code' => 401,
                 'message' => '账号或密码错误',
                 'data' => null
-            ]);
+            ], 401);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+
+        $user = Auth::user();
 
         return response()->json([
             'code' => 200,
             'message' => '登录成功',
             'data' => [
                 'token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => JWTAuth::factory()->getTTL() * 60,
                 'user' => [
                     'id' => $user->id,
                     'account' => $user->account,
@@ -97,7 +104,16 @@ class LZWController extends Controller
      */
     public function me(Request $request)
     {
-        $user = $request->user();
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token无效',
+                'data' => null
+            ], 401);
+        }
 
         return response()->json([
             'code' => 200,
@@ -118,13 +134,21 @@ class LZWController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
+        try {
+            JWTAuth::invalidate(JWTAuth::getToken());
 
-        return response()->json([
-            'code' => 200,
-            'message' => '退出成功',
-            'data' => null
-        ]);
+            return response()->json([
+                'code' => 200,
+                'message' => '退出成功',
+                'data' => null
+            ]);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'code' => 500,
+                'message' => '退出失败：' . $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
     }
 
     /**
@@ -133,7 +157,16 @@ class LZWController extends Controller
      */
     public function adminUsers(Request $request)
     {
-        $user = $request->user();
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token无效',
+                'data' => null
+            ], 401);
+        }
 
         if ($user->role !== 'admin') {
             return response()->json([
@@ -202,7 +235,16 @@ class LZWController extends Controller
      */
     public function updateProfile(Request $request)
     {
-        $user = $request->user();
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token无效',
+                'data' => null
+            ], 401);
+        }
 
         $validated = $request->validate([
             'name' => 'nullable|string',
