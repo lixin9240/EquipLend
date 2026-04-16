@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Route;
     Route::post('/auth/register', [LZWController::class, 'register']);//注册
     Route::post('/auth/login', [LZWController::class, 'login']);//登录
     Route::post('/auth/forget-password', [LZWController::class, 'forgetPassword']);//忘记密码
+    Route::post('/auth/send-email-code', [LZWController::class, 'sendEmailCode']);//发送邮箱验证码
+    Route::post('/auth/verify-email-code', [LZWController::class, 'verifyEmailCode']);//验证邮箱验证码
 
     // 需要认证的接口
     Route::group(['middleware' => 'jwt.auth'], function () {

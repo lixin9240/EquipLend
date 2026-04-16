@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\EmailVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +12,12 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class LZWController extends Controller
 {
+    protected $emailVerificationService;
+
+    public function __construct(EmailVerificationService $emailVerificationService)
+    {
+        $this->emailVerificationService = $emailVerificationService;
+    }
     /**
      * 用户注册
      * 接口: POST /api/auth/register
@@ -84,11 +91,21 @@ class LZWController extends Controller
             'password' => $validated['password'],
         ];
 
+        // 调试：检查用户是否存在
+        $user = \App\Models\User::where('account', $validated['account'])->first();
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '账号不存在',
+                'data' => null
+            ], 401);
+        }
+
         // 尝试使用JWT认证
         if (!$token = JWTAuth::attempt($credentials)) {
             return response()->json([
                 'code' => 401,
-                'message' => '账号或密码错误',
+                'message' => '密码错误',
                 'data' => null
             ], 401);
         }
@@ -235,7 +252,7 @@ class LZWController extends Controller
 
         // 4. 重置密码
         $user->update([
-            'password' => Hash::make($validated['password'])
+            'password' => $validated['password']
         ]);
 
         // 5. 返回成功
@@ -280,7 +297,7 @@ class LZWController extends Controller
 
         // 如果传了密码就更新
         if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
+            $user->password = $validated['password'];
         }
 
         $user->save();
@@ -295,6 +312,98 @@ class LZWController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
             ]
+        ]);
+    }
+
+    /**
+     * 发送邮箱验证码
+     * 接口: POST /api/auth/send-email-code
+     */
+    public function sendEmailCode(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'type' => 'nullable|string|in:register,reset_password,bind',
+        ]);
+
+        $email = $validated['email'];
+        $type = $validated['type'] ?? 'register';
+
+        // 根据不同类型进行额外验证
+        switch ($type) {
+            case 'register':
+                // 注册时检查邮箱是否已被使用
+                if (User::where('email', $email)->exists()) {
+                    return response()->json([
+                        'code' => 400,
+                        'message' => '该邮箱已被注册',
+                        'data' => null
+                    ]);
+                }
+                break;
+
+            case 'reset_password':
+                // 重置密码时检查邮箱是否存在
+                if (!User::where('email', $email)->exists()) {
+                    return response()->json([
+                        'code' => 400,
+                        'message' => '该邮箱未注册',
+                        'data' => null
+                    ]);
+                }
+                break;
+        }
+
+        // 发送验证码
+        $result = $this->emailVerificationService->sendCode($email, $type);
+
+        if ($result['success']) {
+            return response()->json([
+                'code' => 200,
+                'message' => $result['message'],
+                'data' => [
+                    'expire_minutes' => $result['expire_minutes']
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'code' => 400,
+            'message' => $result['message'],
+            'data' => null
+        ]);
+    }
+
+    /**
+     * 验证邮箱验证码（仅验证，不执行其他操作）
+     * 接口: POST /api/auth/verify-email-code
+     */
+    public function verifyEmailCode(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'code' => 'required|string|size:6',
+            'type' => 'nullable|string|in:register,reset_password,bind',
+        ]);
+
+        $email = $validated['email'];
+        $code = $validated['code'];
+        $type = $validated['type'] ?? 'register';
+
+        $isValid = $this->emailVerificationService->verifyCode($email, $code, $type);
+
+        if ($isValid) {
+            return response()->json([
+                'code' => 200,
+                'message' => '验证码正确',
+                'data' => null
+            ]);
+        }
+
+        return response()->json([
+            'code' => 400,
+            'message' => '验证码错误或已过期',
+            'data' => null
         ]);
     }
 }
