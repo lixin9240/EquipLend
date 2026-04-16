@@ -5,9 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Device;
 use App\Models\Booking;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
-class WLJController extends Controller
+class WLJController extends \Illuminate\Routing\Controller
 {
     // 获取设备列表（分页+筛选）
     public function getDevices(Request $request)
@@ -89,7 +90,7 @@ class WLJController extends Controller
 
         // 创建借用申请
         $booking = Booking::create([
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'device_id' => $request->device_id,
             'borrow_start' => $request->borrow_start,
             'borrow_end' => $request->borrow_end,
@@ -111,7 +112,7 @@ class WLJController extends Controller
     // 获取个人借用记录
     public function getMyBookings(Request $request)
     {
-        $query = Booking::where('user_id', auth()->id())->with('device:id,name,category');
+            $query = Booking::where('user_id', Auth::id())->with('device:id,name,category');
 
         // 状态筛选
         if ($request->has('status')) {
@@ -156,7 +157,7 @@ class WLJController extends Controller
     // 申请归还设备
     public function returnBooking($id)
     {
-        $booking = Booking::where('id', $id)->where('user_id', auth()->id())->first();
+        $booking = Booking::where('id', $id)->where('user_id', Auth::id())->first();
 
         if (!$booking) {
             return response()->json([

@@ -17,13 +17,24 @@ class LZWController extends Controller
      */
     public function register(Request $request)
     {
-        $validated = $request->validate([
-            'account' => 'required|string|unique:users',
-            'name' => 'required|string',
-            'password' => 'required|string|min:6',
-            'email' => 'nullable|email',
-            'role' => 'nullable|string|in:student,admin',
-        ]);
+        // 确保返回 JSON
+        $request->headers->set('Accept', 'application/json');
+        
+        try {
+            $validated = $request->validate([
+                'account' => 'required|string|unique:users',
+                'name' => 'required|string',
+                'password' => 'required|string|min:6',
+                'email' => 'nullable|email',
+                'role' => 'nullable|string|in:student,admin',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'code' => 422,
+                'message' => '验证失败',
+                'data' => $e->errors()
+            ], 422);
+        }
 
         // 检查账号是否重复
         if (User::where('account', $validated['account'])->exists()) {
