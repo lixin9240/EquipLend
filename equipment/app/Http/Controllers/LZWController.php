@@ -349,7 +349,7 @@ class LZWController extends Controller
         try {
             $validated = $request->validate([
                 'email' => 'required|email',
-                'type' => 'nullable|string|in:register,reset_password,bind,login',
+                'type' => 'nullable|string|in:register,reset_password,bind,login',//验证码类型，注册，用户登录，重置密码，绑定新邮箱等
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
