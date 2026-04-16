@@ -7,9 +7,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, SoftDeletes, HasApiTokens;
 
@@ -95,6 +96,22 @@ class User extends Authenticatable
     public function scopeStudent($query)
     {
         return $query->where('role', self::ROLE_STUDENT);
+    }
+
+    /**
+     * 获取 JWT 标识符
+     */
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    /**
+     * 获取 JWT 自定义声明
+     */
+    public function getJWTCustomClaims()
+    {
+        return [];
     }
 
     /**

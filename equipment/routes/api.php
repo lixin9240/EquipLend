@@ -6,11 +6,13 @@ use App\Http\Controllers\WLJController;
 use Illuminate\Support\Facades\Route;
 
 
+    // 公开接口 
     Route::post('/auth/register', [LZWController::class, 'register']);//注册
     Route::post('/auth/login', [LZWController::class, 'login']);//登录
     Route::post('/auth/forget-password', [LZWController::class, 'forgetPassword']);//忘记密码
 
-    Route::group(['middleware' => 'api'], function () {
+    // 需要认证的接口
+    Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/auth/me', [LZWController::class, 'me']);//获取当前用户信息
     Route::post('/auth/logout', [LZWController::class, 'logout']);//退出登录
     Route::put('/auth/profile', [LZWController::class, 'updateProfile']);//更新用户信息

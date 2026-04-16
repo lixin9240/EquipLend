@@ -67,20 +67,24 @@ class LZWController extends Controller
 
     /**
      * 用户登录
-     * 接口: /api/auth/login
+     * 接口: POST /api/auth/login
+     * 说明: 登录不需要token，登录成功后返回token
      */
     public function login(Request $request)
     {
+        // 验证请求参数
         $validated = $request->validate([
             'account' => 'required|string',
             'password' => 'required|string',
         ]);
 
+        // 准备认证凭据
         $credentials = [
             'account' => $validated['account'],
             'password' => $validated['password'],
         ];
 
+        // 尝试使用JWT认证
         if (!$token = JWTAuth::attempt($credentials)) {
             return response()->json([
                 'code' => 401,
@@ -89,9 +93,10 @@ class LZWController extends Controller
             ], 401);
         }
 
-
+        // 获取当前认证用户
         $user = Auth::user();
 
+        // 返回登录成功信息和token
         return response()->json([
             'code' => 200,
             'message' => '登录成功',
