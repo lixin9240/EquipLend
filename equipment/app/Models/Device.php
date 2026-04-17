@@ -42,7 +42,7 @@ class Device extends Model
      */
     public function getCreatedAtAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d H:i:s') : null;
     }
 
     /**
@@ -50,7 +50,7 @@ class Device extends Model
      */
     public function getUpdatedAtAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d H:i:s') : null;
     }
 
     /**
@@ -58,7 +58,7 @@ class Device extends Model
      */
     public function getDeletedAtAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d H:i:s') : null;
     }
 
     // 状态常量
