@@ -21,7 +21,6 @@ class Booking extends Model
     protected $fillable = [
         'user_id',// 用户ID
         'device_id',// 设备ID
-        'device_name',// 设备名称
         'borrow_start',// 借用开始日期
         'borrow_end',// 借用结束日期
         'purpose',// 借用目的
