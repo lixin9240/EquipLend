@@ -211,17 +211,27 @@ class LXController extends \Illuminate\Routing\Controller
             'status' => 'required|in:available,maintenance',
         ]);
 
+        // 检查是否已存在相同名称和分类的设备
+        $existingDevice = Device::where('name', $request->input('name'))
+            ->where('category', $request->input('category'))
+            ->first();
+
+        if ($existingDevice) {
+            return response()->json([
+                'code' => 400,
+                'message' => '该设备已存在，请勿重复添加',
+                'data' => null
+            ], 400);
+        }
+
         // 创建设备
         $device = Device::create([
-             'id' => $request->input('id'),
             'name' => $request->input('name'),
             'category' => $request->input('category'),
             'description' => $request->input('description'),
             'total_qty' => $request->input('total_qty'),
             'available_qty' => $request->input('available_qty'),
             'status' => $request->input('status'),
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         return response()->json([
