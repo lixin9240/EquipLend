@@ -76,10 +76,10 @@ class LXController extends \Illuminate\Routing\Controller
                 'id' => $booking->id,
                 'user_name' => $booking->user->name ?? '',
                 'device_name' => $booking->device->name ?? '',
-                'borrow_start' => $booking->borrow_start->format('Y-m-d'),
-                'borrow_end' => $booking->borrow_end->format('Y-m-d'),
+                'borrow_start' => $booking->borrow_start,
+                'borrow_end' => $booking->borrow_end,
                 'status' => $booking->status,
-                'created_at' => $booking->created_at->format('Y-m-d H:i:s'),
+                'created_at' => $booking->created_at,
                 'user' => [
                     'id' => $booking->user->id ?? null,
                     'account' => $booking->user->account ?? '',

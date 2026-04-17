@@ -43,7 +43,7 @@ class Booking extends Model
      */
     public function getCreatedAtAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d H:i:s') : null;
     }
 
     /**
@@ -51,7 +51,7 @@ class Booking extends Model
      */
     public function getUpdatedAtAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d H:i:s') : null;
     }
 
     /**
@@ -59,7 +59,7 @@ class Booking extends Model
      */
     public function getDeletedAtAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d H:i:s') : null;
     }
 
     /**
@@ -67,7 +67,7 @@ class Booking extends Model
      */
     public function getBorrowStartAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d') : null;
     }
 
     /**
@@ -75,7 +75,7 @@ class Booking extends Model
      */
     public function getBorrowEndAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai') : null;
+        return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d') : null;
     }
 
     // 状态常量
