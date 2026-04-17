@@ -72,7 +72,7 @@ class WLJController extends \Illuminate\Routing\Controller
     {
         $request->validate([
             'device_id' => 'required|exists:devices,id',
-            'device_name' => 'required|string|max:100',
+            'name' => 'required|string|max:100',
             'borrow_start' => 'required|date',
             'borrow_end' => 'required|date|after_or_equal:borrow_start',
             'purpose' => 'nullable|string'
@@ -81,7 +81,7 @@ class WLJController extends \Illuminate\Routing\Controller
         $device = Device::find($request->device_id);
 
         // 检查设备名称是否匹配
-        if ($device->name !== $request->device_name) {
+        if ($device->name !== $request->name) {
             return response()->json([
                 'code' => 400,
                 'message' => '设备名称与设备ID不匹配',
@@ -102,7 +102,7 @@ class WLJController extends \Illuminate\Routing\Controller
         $booking = Booking::create([
             'user_id' => Auth::id(),
             'device_id' => $request->device_id,
-            'device_name' => $request->device_name,
+            'device_name' => $request->name,
             'borrow_start' => $request->borrow_start,
             'borrow_end' => $request->borrow_end,
             'purpose' => $request->purpose,
