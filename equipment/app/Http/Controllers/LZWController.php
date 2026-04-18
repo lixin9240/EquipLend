@@ -29,11 +29,20 @@ class LZWController extends Controller
         
         try {
             $validated = $request->validate([
-                'account' => 'required|string|unique:users',
-                'name' => 'required|string',
-                'password' => 'required|string|min:6',
-                'email' => 'nullable|email',
+                'account' => 'required|string|min:4|max:20|alpha_num|unique:users',
+                'name' => 'required|string|min:2|max:20',
+                'password' => 'required|string|min:6|regex:/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/',
+                'email' => 'nullable|email|max:100',
                 'role' => 'nullable|string|in:student,admin',
+            ], [
+                'account.min' => '账号至少4个字符',
+                'account.max' => '账号最多20个字符',
+                'account.alpha_num' => '账号只能由字母和数字组成',
+                'name.min' => '姓名至少2个字符',
+                'name.max' => '姓名最多20个字符',
+                'password.min' => '密码至少6个字符',
+                'password.regex' => '密码必须同时包含英文字母和数字',
+                'email.max' => '邮箱最多100个字符',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
