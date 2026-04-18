@@ -247,4 +247,68 @@ class WLJController extends \Illuminate\Routing\Controller
             ]
         ]);
     }
+
+    // 编辑设备信息
+    public function updateDevice(Request $request, $id)
+    {
+        $device = Device::find($id);
+
+        if (!$device) {
+            return response()->json([
+                'code' => 404,
+                'message' => '设备不存在',
+                'data' => null
+            ]);
+        }
+
+        $request->validate([
+            'name' => 'nullable|string|max:100',
+            'category' => 'nullable|string|max:50',
+            'description' => 'nullable|string',
+            'total_qty' => 'nullable|integer|min:1',
+            'available_qty' => 'nullable|integer|min:0',
+            'status' => 'nullable|in:available,maintenance',
+        ]);
+
+        // 如果更新了分类，检查分类是否存在
+        if ($request->has('category')) {
+            $categoryCode = $request->input('category');
+            $category = \App\Models\Category::where('code', $categoryCode)->first();
+            if (!$category) {
+                return response()->json([
+                    'code' => 400,
+                    'message' => '设备分类不存在，请先创建分类或使用现有分类',
+                    'data' => null
+                ], 400);
+            }
+        }
+
+        // 更新设备（只更新传了的字段）
+        if ($request->has('name')) {
+            $device->name = $request->input('name');
+        }
+        if ($request->has('category')) {
+            $device->category = $request->input('category');
+        }
+        if ($request->has('description')) {
+            $device->description = $request->input('description');
+        }
+        if ($request->has('total_qty')) {
+            $device->total_qty = $request->input('total_qty');
+        }
+        if ($request->has('available_qty')) {
+            $device->available_qty = $request->input('available_qty');
+        }
+        if ($request->has('status')) {
+            $device->status = $request->input('status');
+        }
+
+        $device->save();
+
+        return response()->json([
+            'code' => 200,
+            'message' => '设备更新成功',
+            'data' => $device
+        ]);
+    }
 }
