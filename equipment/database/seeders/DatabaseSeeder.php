@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'account' => 'admin123',
             'name' => '系统管理员',
-            'password' => 'admin124',  // 会自动哈希加密
+            'password' => 'admin123',  // 会自动哈希加密
             'role' => 'admin',
             'email' => '3258599349@qq.com',
         ]);
