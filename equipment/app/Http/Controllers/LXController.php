@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Category;
 use App\Models\Device;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class LXController extends \Illuminate\Routing\Controller
@@ -211,6 +213,17 @@ class LXController extends \Illuminate\Routing\Controller
             'status' => 'required|in:available,maintenance',
         ]);
 
+        // 检查分类是否存在
+        $categoryCode = $request->input('category');
+        $category = \App\Models\Category::where('code', $categoryCode)->first();
+        if (!$category) {
+            return response()->json([
+                'code' => 400,
+                'message' => '设备分类不存在，请先创建分类或使用现有分类',
+                'data' => null
+            ], 400);
+        }
+
         // 检查是否已存在相同名称和分类的设备
         $existingDevice = Device::where('name', $request->input('name'))
             ->where('category', $request->input('category'))
@@ -283,6 +296,19 @@ class LXController extends \Illuminate\Routing\Controller
             'status' => 'nullable|in:available,maintenance',
         ]);
 
+        // 如果更新了分类，检查分类是否存在
+        if ($request->has('category')) {
+            $categoryCode = $request->input('category');
+            $category = \App\Models\Category::where('code', $categoryCode)->first();
+            if (!$category) {
+                return response()->json([
+                    'code' => 400,
+                    'message' => '设备分类不存在，请先创建分类或使用现有分类',
+                    'data' => null
+                ], 400);
+            }
+        }
+
         // 更新设备（只更新传了的字段）
         if ($request->has('name')) {
             $device->name = $request->input('name');
@@ -350,6 +376,298 @@ class LXController extends \Illuminate\Routing\Controller
         return response()->json([
             'code' => 200,
             'message' => '设备已下架'
+        ]);
+    }
+
+    // =======================================
+    // 设备分类管理模块
+    // =======================================
+
+    /**
+     * 获取分类列表（公开接口）
+     * GET /api/categories
+     */
+    public function getCategories(Request $request): JsonResponse
+    {
+        $query = Category::query();
+
+        // 只显示启用的分类（非管理员）
+        if (!$this->isAdmin()) {
+            $query->active();
+        }
+
+        // 搜索
+        if ($request->has('keyword')) {
+            $keyword = $request->input('keyword');
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', "%{$keyword}%")
+                  ->orWhere('code', 'like', "%{$keyword}%");
+            });
+        }
+
+        // 状态筛选
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->input('is_active'));
+        }
+
+        // 排序
+        $query->ordered();
+
+        // 分页
+        $page = $request->input('page', 1);
+        $pageSize = $request->input('pageSize', 10);
+
+        $categories = $query->paginate($pageSize, ['*'], 'page', $page);
+
+        // 获取每个分类的设备数量
+        $list = $categories->map(function ($category) {
+            return [
+                'id' => $category->id,
+                'name' => $category->name,
+                'code' => $category->code,
+                'description' => $category->description,
+                'sort_order' => $category->sort_order,
+                'is_active' => $category->is_active,
+                'device_count' => Device::where('category', $category->code)->count(),
+                'created_at' => $category->created_at,
+                'updated_at' => $category->updated_at,
+            ];
+        });
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => [
+                'total' => $categories->total(),
+                'page' => $categories->currentPage(),
+                'pageSize' => $categories->perPage(),
+                'list' => $list
+            ]
+        ]);
+    }
+
+    /**
+     * 获取所有启用的分类（下拉选择用）
+     * GET /api/categories/all
+     */
+    public function getAllCategories(): JsonResponse
+    {
+        $categories = Category::active()->ordered()->get(['id', 'name', 'code', 'description']);
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => $categories
+        ]);
+    }
+
+    /**
+     * 获取分类详情
+     * GET /api/categories/{id}
+     */
+    public function getCategory($id): JsonResponse
+    {
+        $category = Category::find($id);
+
+        if (!$category) {
+            return response()->json([
+                'code' => 404,
+                'message' => '分类不存在'
+            ], 404);
+        }
+
+        // 获取该分类下的设备
+        $devices = Device::where('category', $category->code)
+            ->select('id', 'name', 'total_qty', 'available_qty', 'status')
+            ->get();
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'code' => $category->code,
+                'description' => $category->description,
+                'sort_order' => $category->sort_order,
+                'is_active' => $category->is_active,
+                'device_count' => $devices->count(),
+                'devices' => $devices,
+                'created_at' => $category->created_at,
+                'updated_at' => $category->updated_at,
+            ]
+        ]);
+    }
+
+    /**
+     * 创建分类（管理员）
+     * POST /api/admin/categories
+     */
+    public function createCategory(Request $request): JsonResponse
+    {
+        // 权限检查
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限，只有管理员可以创建分类'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:50',
+            'code' => 'required|string|max:50|unique:categories,code',
+            'description' => 'nullable|string|max:255',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'code' => 422,
+                'message' => '参数验证失败',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $category = Category::create([
+            'name' => $request->input('name'),
+            'code' => $request->input('code'),
+            'description' => $request->input('description'),
+            'sort_order' => $request->input('sort_order', 0),
+            'is_active' => $request->input('is_active', true),
+        ]);
+
+        return response()->json([
+            'code' => 200,
+            'message' => '分类创建成功',
+            'data' => $category
+        ]);
+    }
+
+    /**
+     * 更新分类（管理员）
+     * PUT /api/admin/categories/{id}
+     */
+    public function updateCategory(Request $request, $id): JsonResponse
+    {
+        // 权限检查
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限，只有管理员可以更新分类'
+            ], 403);
+        }
+
+        $category = Category::find($id);
+        if (!$category) {
+            return response()->json([
+                'code' => 404,
+                'message' => '分类不存在'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'nullable|string|max:50',
+            'code' => 'nullable|string|max:50|unique:categories,code,' . $id,
+            'description' => 'nullable|string|max:255',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'code' => 422,
+                'message' => '参数验证失败',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // 如果修改了code，需要同步更新devices表中的category字段
+        $oldCode = $category->code;
+        $newCode = $request->input('code');
+
+        $category->fill($request->only(['name', 'code', 'description', 'sort_order', 'is_active']));
+        $category->save();
+
+        // 同步更新设备表中的分类编码
+        if ($newCode && $newCode !== $oldCode) {
+            Device::where('category', $oldCode)->update(['category' => $newCode]);
+        }
+
+        return response()->json([
+            'code' => 200,
+            'message' => '分类更新成功',
+            'data' => $category
+        ]);
+    }
+
+    /**
+     * 删除分类（管理员，软删除）
+     * DELETE /api/admin/categories/{id}
+     */
+    public function deleteCategory($id): JsonResponse
+    {
+        // 权限检查
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限，只有管理员可以删除分类'
+            ], 403);
+        }
+
+        $category = Category::find($id);
+        if (!$category) {
+            return response()->json([
+                'code' => 404,
+                'message' => '分类不存在'
+            ], 404);
+        }
+
+        // 检查该分类下是否有设备
+        $deviceCount = Device::where('category', $category->code)->count();
+        if ($deviceCount > 0) {
+            return response()->json([
+                'code' => 400,
+                'message' => '该分类下存在设备，无法删除，请先移除或转移设备'
+            ], 400);
+        }
+
+        $category->delete();
+
+        return response()->json([
+            'code' => 200,
+            'message' => '分类删除成功'
+        ]);
+    }
+
+    /**
+     * 获取分类统计信息
+     * GET /api/categories/statistics
+     */
+    public function getCategoryStatistics(): JsonResponse
+    {
+        $categories = Category::active()->ordered()->get();
+
+        $stats = $categories->map(function ($category) {
+            $devices = Device::where('category', $category->code);
+            return [
+                'id' => $category->id,
+                'name' => $category->name,
+                'code' => $category->code,
+                'device_count' => $devices->count(),
+                'total_qty' => $devices->sum('total_qty'),
+                'available_qty' => $devices->sum('available_qty'),
+            ];
+        });
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => [
+                'categories' => $stats,
+                'total_categories' => $categories->count(),
+                'total_devices' => Device::count(),
+            ]
         ]);
     }
 }

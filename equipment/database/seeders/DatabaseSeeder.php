@@ -16,6 +16,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // 先填充设备分类
+        $this->call(CategorySeeder::class);
+
+
         // 创建管理员账号1--LX
         User::create([
             'account' => 'admin123',

@@ -17,12 +17,21 @@ class WLJController extends \Illuminate\Routing\Controller
 
         // 筛选条件
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%')
-                  ->orWhere('description', 'like', '%' . $request->name . '%');
+            $keyword = $request->input('name');
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', '%' . $keyword . '%')
+                  ->orWhere('description', 'like', '%' . $keyword . '%');
+            });
         }
 
+        // 支持按分类编码或分类名称筛选
         if ($request->has('category')) {
-            $query->where('category', $request->category);
+            $categoryValue = $request->input('category');
+            // 先尝试按code匹配，如果没有再尝试按name匹配
+            $categoryCode = \App\Models\Category::where('code', $categoryValue)
+                ->orWhere('name', $categoryValue)
+                ->value('code');
+            $query->where('category', $categoryCode ?: $categoryValue);
         }
 
         if ($request->has('status')) {
@@ -35,6 +44,24 @@ class WLJController extends \Illuminate\Routing\Controller
 
         $devices = $query->paginate($pageSize, ['*'], 'page', $page);
 
+        // 获取分类信息并格式化数据
+        $categories = \App\Models\Category::pluck('name', 'code')->toArray();
+        
+        $list = collect($devices->items())->map(function ($device) use ($categories) {
+            return [
+                'id' => $device->id,
+                'name' => $device->name,
+                'category' => $device->category,
+                'category_name' => $categories[$device->category] ?? $device->category,
+                'description' => $device->description,
+                'total_qty' => $device->total_qty,
+                'available_qty' => $device->available_qty,
+                'status' => $device->status,
+                'created_at' => $device->created_at,
+                'updated_at' => $device->updated_at,
+            ];
+        });
+
         return response()->json([
             'code' => 200,
             'message' => '获取成功',
@@ -42,7 +69,7 @@ class WLJController extends \Illuminate\Routing\Controller
                 'total' => $devices->total(),
                 'page' => $devices->currentPage(),
                 'pageSize' => $devices->perPage(),
-                'list' => $devices->items()
+                'list' => $list
             ]
         ]);
     }
@@ -60,10 +87,37 @@ class WLJController extends \Illuminate\Routing\Controller
             ]);
         }
 
+        // 获取分类信息
+        $category = \App\Models\Category::where('code', $device->category)->first();
+        
+        // 获取相关设备（同分类）
+        $relatedDevices = Device::where('category', $device->category)
+            ->where('id', '!=', $device->id)
+            ->where('status', 'available')
+            ->limit(5)
+            ->get(['id', 'name', 'available_qty']);
+
         return response()->json([
             'code' => 200,
             'message' => '获取成功',
-            'data' => $device
+            'data' => [
+                'id' => $device->id,
+                'name' => $device->name,
+                'category' => $device->category,
+                'category_info' => $category ? [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'code' => $category->code,
+                    'description' => $category->description,
+                ] : null,
+                'description' => $device->description,
+                'total_qty' => $device->total_qty,
+                'available_qty' => $device->available_qty,
+                'status' => $device->status,
+                'related_devices' => $relatedDevices,
+                'created_at' => $device->created_at,
+                'updated_at' => $device->updated_at,
+            ]
         ]);
     }
 
