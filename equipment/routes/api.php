@@ -37,10 +37,9 @@ use Illuminate\Support\Facades\Route;
     // 设备大厅模块
     Route::get('/devices', [WLJController::class, 'getDevices']);//获取设备列表
     Route::get('/devices/{id}', [WLJController::class, 'getDevice']);//获取设备详情
-    Route::put('/devices/{id}', [WLJController::class, 'updateDevice']);//编辑设备信息
 
     // 借用申请模块
-    Route::post('/bookings', [WLJController::class, 'createBooking']);
+    Route::post('/bookings', [WLJController::class, 'createBooking']);//创建借用申请
 
     // 我的借用记录模块
     Route::get('/bookings/my', [WLJController::class, 'getMyBookings']);//获取我的借用记录
