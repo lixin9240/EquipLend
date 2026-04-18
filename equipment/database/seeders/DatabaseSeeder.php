@@ -48,9 +48,9 @@ class DatabaseSeeder extends Seeder
         ]);
         // 创建测试学生账号1
         User::create([
-            'account' => '2021001',
+            'account' => 'F2021001',
             'name' => '张三',
-            'password' => '123456',  // 会自动哈希加密
+            'password' => 'F123456',  // 会自动哈希加密
             'role' => 'student',
             'email' => 'zhangsan@example.com',
         ]);
