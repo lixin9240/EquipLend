@@ -29,7 +29,7 @@ class LZWController extends Controller
         
         try {
             $validated = $request->validate([
-                'account' => 'required|string|min:4|max:20|alpha_num|unique:users',
+                'account' => 'required|string|min:4|max:20|unique:users',
                 'name' => 'required|string|min:2|max:20',
                 'password' => 'required|string|min:6|regex:/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/',
                 'email' => 'nullable|email|max:100',
