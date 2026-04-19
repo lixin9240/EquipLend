@@ -13,13 +13,17 @@ use Illuminate\Support\Facades\Route;
     Route::post('/auth/send-email-code', [LZWController::class, 'sendEmailCode']);//发送邮箱验证码
 
    
-    Route::get('/categories', [LXController::class, 'getCategories']);           // 获取分类列表
-    Route::get('/categories/all', [LXController::class, 'getAllCategories']);         // 获取所有启用的分类（下拉选择）
-    Route::get('/categories/statistics', [LXController::class, 'getCategoryStatistics']); // 分类统计
-    Route::get('/categories/{id}', [LXController::class, 'getCategory']);       // 获取分类详情
+    // 分类接口
+    Route::group(['middleware' => 'jwt.auth', 'prefix' => 'categories'], function () {
+        Route::get('/', [LXController::class, 'getCategories']);           // 获取分类列表（管理员功能）
+        Route::get('/all', [LXController::class, 'getAllCategories']);         // 获取所有启用的分类（普通用户）
+        Route::get('/statistics', [LXController::class, 'getCategoryStatistics']); // 分类统计
+        Route::get('/{id}', [LXController::class, 'getCategory']);       // 获取分类详情
+    });
 
     // 需要认证的接口
     Route::group(['middleware' => 'jwt.auth'], function () {
+        // 分类接口已移到上面统一处理
     Route::get('/auth/me', [LZWController::class, 'me']);//获取当前用户信息
     Route::post('/auth/logout', [LZWController::class, 'logout']);//退出登录
     Route::put('/auth/profile', [LZWController::class, 'updateProfile']);//更新用户信息
@@ -32,6 +36,7 @@ use Illuminate\Support\Facades\Route;
     Route::post('/admin/categories', [LXController::class, 'createCategory']);      // 创建分类
     Route::put('/admin/categories/{id}', [LXController::class, 'updateCategory']); // 更新分类
     Route::delete('/admin/categories/{id}', [LXController::class, 'deleteCategory']); // 删除分类
+    Route::patch('/admin/categories/{id}/toggle-status', [LXController::class, 'toggleCategoryStatus']); // 切换分类启用/禁用状态
 
 
     // 设备大厅模块

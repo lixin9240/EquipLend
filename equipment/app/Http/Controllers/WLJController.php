@@ -181,17 +181,27 @@ class WLJController extends \Illuminate\Routing\Controller
 
         // 格式化数据
         $list = $bookings->map(function ($booking) {
+            // 获取分类详细信息
+            $category = \App\Models\Category::where('code', $booking->device->category)->first();
+
             return [
                 'id' => $booking->id,
                 'device_name' => $booking->device->name,
                 'borrow_start' => $booking->borrow_start,
                 'borrow_end' => $booking->borrow_end,
+                'purpose' => $booking->purpose,
                 'status' => $booking->status,
                 'created_at' => $booking->created_at,
                 'device' => [
                     'id' => $booking->device->id,
                     'name' => $booking->device->name,
-                    'category' => $booking->device->category
+                    'category_code' => $booking->device->category,
+                    'category' => $category ? [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'code' => $category->code,
+                        'description' => $category->description,
+                    ] : null,
                 ]
             ];
         });

@@ -74,6 +74,9 @@ class LXController extends \Illuminate\Routing\Controller
 
         // 格式化返回数据
         $list = $bookings->map(function ($booking) {
+            // 获取分类详细信息
+            $category = \App\Models\Category::where('code', $booking->device->category ?? '')->first();
+
             return [
                 'id' => $booking->id,
                 'user_name' => $booking->user->name ?? '',
@@ -90,7 +93,13 @@ class LXController extends \Illuminate\Routing\Controller
                 'device' => [
                     'id' => $booking->device->id ?? null,
                     'name' => $booking->device->name ?? '',
-                    'available_qty' => $booking->device->available_qty ?? 0
+                    'available_qty' => $booking->device->available_qty ?? 0,
+                    'category_code' => $booking->device->category ?? '',
+                    'category' => $category ? [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'code' => $category->code,
+                    ] : null,
                 ]
             ];
         });
@@ -384,17 +393,21 @@ class LXController extends \Illuminate\Routing\Controller
     // =======================================
 
     /**
-     * 获取分类列表（公开接口）
+     * 获取分类列表（管理员功能，需认证）
      * GET /api/categories
      */
     public function getCategories(Request $request): JsonResponse
     {
-        $query = Category::query();
-
-        // 只显示启用的分类（非管理员）
+        // 验证是否为管理员
         if (!$this->isAdmin()) {
-            $query->active();
+            return response()->json([
+                'code' => 403,
+                'message' => '权限不足，仅管理员可访问',
+                'data' => null
+            ], 403);
         }
+
+        $query = Category::query();
 
         // 搜索
         if ($request->has('keyword')) {
@@ -419,8 +432,26 @@ class LXController extends \Illuminate\Routing\Controller
 
         $categories = $query->paginate($pageSize, ['*'], 'page', $page);
 
-        // 获取每个分类的设备数量
+        // 获取每个分类的详细信息
         $list = $categories->map(function ($category) {
+            // 获取该分类下的设备统计
+            $devices = Device::where('category', $category->code)->get();
+            $totalDevices = $devices->count();
+            $availableDevices = $devices->where('status', 'available')->count();
+            $borrowedDevices = $devices->where('status', 'borrowed')->count();
+            $maintenanceDevices = $devices->where('status', 'maintenance')->count();
+
+            // 获取该分类下的设备列表（简要信息）
+            $deviceList = $devices->take(5)->map(function ($device) {
+                return [
+                    'id' => $device->id,
+                    'name' => $device->name,
+                    'status' => $device->status,
+                    'total_qty' => $device->total_qty,
+                    'available_qty' => $device->available_qty,
+                ];
+            });
+
             return [
                 'id' => $category->id,
                 'name' => $category->name,
@@ -428,9 +459,18 @@ class LXController extends \Illuminate\Routing\Controller
                 'description' => $category->description,
                 'sort_order' => $category->sort_order,
                 'is_active' => $category->is_active,
-                'device_count' => Device::where('category', $category->code)->count(),
                 'created_at' => $category->created_at,
                 'updated_at' => $category->updated_at,
+                // 设备统计信息
+                'statistics' => [
+                    'total_devices' => $totalDevices,           // 设备总数
+                    'available_devices' => $availableDevices,   // 可用设备数
+                    'borrowed_devices' => $borrowedDevices,     // 借出设备数
+                    'maintenance_devices' => $maintenanceDevices, // 维修中设备数
+                ],
+                // 设备列表（最多显示5个）
+                'devices' => $deviceList,
+                'has_more_devices' => $totalDevices > 5,        // 是否有更多设备
             ];
         });
 
@@ -447,7 +487,7 @@ class LXController extends \Illuminate\Routing\Controller
     }
 
     /**
-     * 获取所有启用的分类（下拉选择用）
+     * 获取所有启用的分类（普通用户可用，需认证）
      * GET /api/categories/all
      */
     public function getAllCategories(): JsonResponse
@@ -489,11 +529,11 @@ class LXController extends \Illuminate\Routing\Controller
                 'name' => $category->name,
                 'code' => $category->code,
                 'description' => $category->description,
-                'sort_order' => $category->sort_order,
-                'is_active' => $category->is_active,
-                'device_count' => $devices->count(),
-                'devices' => $devices,
-                'created_at' => $category->created_at,
+                'sort_order' => $category->sort_order,//排序顺序
+                'is_active' => $category->is_active,//是否启用
+                'device_count' => $devices->count(),//设备数量
+                'devices' => $devices,//设备列表
+                'created_at' => $category->created_at,// => $category->created_at,
                 'updated_at' => $category->updated_at,
             ]
         ]);
@@ -515,10 +555,9 @@ class LXController extends \Illuminate\Routing\Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:50',
-            'code' => 'required|string|max:50|unique:categories,code',
+            'code' => 'required|string|max:50|unique:categories,code',//分类编码
             'description' => 'nullable|string|max:255',
-            'sort_order' => 'nullable|integer|min:0',
-            'is_active' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',//是否启用
         ]);
 
         if ($validator->fails()) {
@@ -637,6 +676,46 @@ class LXController extends \Illuminate\Routing\Controller
         return response()->json([
             'code' => 200,
             'message' => '分类删除成功'
+        ]);
+    }
+
+    /**
+     * 切换分类启用/禁用状态
+     * PATCH /api/admin/categories/{id}/toggle-status
+     */
+    public function toggleCategoryStatus($id): JsonResponse
+    {
+        // 权限检查
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限，只有管理员可以修改分类状态'
+            ], 403);
+        }
+
+        $category = Category::find($id);
+        if (!$category) {
+            return response()->json([
+                'code' => 404,
+                'message' => '分类不存在'
+            ], 404);
+        }
+
+        // 切换状态
+        $category->is_active = !$category->is_active;
+        $category->save();
+
+        $statusText = $category->is_active ? '启用' : '禁用';
+
+        return response()->json([
+            'code' => 200,
+            'message' => "分类已{$statusText}",
+            'data' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'is_active' => $category->is_active,
+                'status_text' => $statusText
+            ]
         ]);
     }
 
