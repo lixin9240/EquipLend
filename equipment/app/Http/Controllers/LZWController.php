@@ -32,7 +32,8 @@ class LZWController extends Controller
                 'account' => 'required|string|min:4|max:20|unique:users',
                 'name' => 'required|string|min:2|max:20',
                 'password' => 'required|string|min:6|regex:/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/',
-                'email' => 'nullable|email|max:100',
+                'password_confirmation' => 'required|string|same:password',
+                'email' => 'required|email|max:100|regex:/^[a-zA-Z0-9._%+-]+@qq\.com$/i',
                 'role' => 'nullable|string|in:student,admin',
             ], [
                 'account.min' => '账号至少4个字符',
@@ -42,6 +43,10 @@ class LZWController extends Controller
                 'name.max' => '姓名最多20个字符',
                 'password.min' => '密码至少6个字符',
                 'password.regex' => '密码必须同时包含英文字母和数字',
+                'password_confirmation.same' => '两次输入的密码不一致',
+                'email.required' => '邮箱不能为空',
+                'email.email' => '邮箱格式不正确',
+                'email.regex' => '仅支持QQ邮箱（@qq.com）',
                 'email.max' => '邮箱最多100个字符',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -84,7 +89,7 @@ class LZWController extends Controller
     /**
      * 用户登录
      * 接口: POST /api/auth/login
-     * 说明: 登录需要邮箱验证码验证成功后才能返回token
+     * 说明: 使用账号和密码登录
      */
     public function login(Request $request)
     {
@@ -92,8 +97,6 @@ class LZWController extends Controller
         $validated = $request->validate([
             'account' => 'required|string',
             'password' => 'required|string',
-            'email' => 'required|email',
-            'code' => 'required|string|size:6',
         ]);
 
         // 1. 检查用户是否存在
@@ -106,31 +109,7 @@ class LZWController extends Controller
             ], 401);
         }
 
-        // 2. 验证邮箱是否匹配
-        if ($user->email !== $validated['email']) {
-            return response()->json([
-                'code' => 401,
-                'message' => '邮箱与账号不匹配',
-                'data' => null
-            ], 401);
-        }
-
-        // 3. 验证邮箱验证码（直接从缓存读取，不删除）
-        $codeKey = "email_code:{$validated['email']}:login";
-        $cachedCode = \Illuminate\Support\Facades\Cache::get($codeKey);
-        
-        if ($cachedCode !== $validated['code']) {
-            return response()->json([
-                'code' => 401,
-                'message' => '验证码错误或已过期',
-                'data' => null
-            ], 401);
-        }
-        
-        // 验证成功后删除验证码
-        \Illuminate\Support\Facades\Cache::forget($codeKey);
-
-        // 4. 验证密码
+        // 2. 验证密码
         $credentials = [
             'account' => $validated['account'],
             'password' => $validated['password'],
@@ -144,7 +123,7 @@ class LZWController extends Controller
             ], 401);
         }
 
-        // 5. 返回登录成功信息和token
+        // 3. 返回登录成功信息和token
         return response()->json([
             'code' => 200,
             'message' => '登录成功',
