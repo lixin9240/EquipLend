@@ -178,20 +178,8 @@ class LXController extends \Illuminate\Routing\Controller
                 'data' => $booking
             ]);
         } else {
-            // 拒绝申请
+            // 拒绝申请（库存通过实时计算，无需手动维护）
             $reasonType = $request->input('reason_type', 'other');
-            $device = Device::find($booking->device_id);
-
-            // 如果是设备不可用，减少设备可用数量
-            if ($reasonType === 'device_unavailable' && $device) {
-                $device->available_qty -= 1;
-                $device->save();
-            }
-            // 如果不是设备不可用，恢复设备可用数量（因为创建申请时已经预占了库存）
-            elseif ($device) {
-                $device->available_qty += 1;
-                $device->save();
-            }
 
             $booking->status = Booking::STATUS_REJECTED;
             $booking->reason = $request->input('reason');

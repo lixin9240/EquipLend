@@ -90,12 +90,39 @@ class WLJController extends \Illuminate\Routing\Controller
         // 获取分类信息
         $category = \App\Models\Category::where('code', $device->category)->first();
         
+        // 实时计算可用库存
+        // 1. 已借出 = pending + approved
+        $borrowedCount = Booking::where('device_id', $device->id)
+            ->whereIn('status', ['approved', 'pending'])
+            ->count();
+        
+        // 2. 损坏/不可用 = 被拒绝且 reason_type = device_unavailable
+        $brokenCount = Booking::where('device_id', $device->id)
+            ->where('status', 'rejected')
+            ->where('reason_type', 'device_unavailable')
+            ->count();
+        
+        // 3. 可用数量 = 总数量 - 已借出 - 损坏/不可用
+        $realAvailableQty = $device->total_qty - $borrowedCount - $brokenCount;
+        
         // 获取相关设备（同分类）
         $relatedDevices = Device::where('category', $device->category)
             ->where('id', '!=', $device->id)
             ->where('status', 'available')
             ->limit(5)
-            ->get(['id', 'name', 'available_qty']);
+            ->get(['id', 'name', 'total_qty'])
+            ->map(function ($relatedDevice) {
+                // 实时计算相关设备的可用库存
+                $relatedBorrowedCount = Booking::where('device_id', $relatedDevice->id)
+                    ->whereIn('status', ['approved', 'pending'])
+                    ->count();
+                $relatedBrokenCount = Booking::where('device_id', $relatedDevice->id)
+                    ->where('status', 'rejected')
+                    ->where('reason_type', 'device_unavailable')
+                    ->count();
+                $relatedDevice->available_qty = $relatedDevice->total_qty - $relatedBorrowedCount - $relatedBrokenCount;
+                return $relatedDevice;
+            });
 
         return response()->json([
             'code' => 200,
@@ -112,7 +139,7 @@ class WLJController extends \Illuminate\Routing\Controller
                 ] : null,
                 'description' => $device->description,
                 'total_qty' => $device->total_qty,
-                'available_qty' => $device->available_qty,
+                'available_qty' => $realAvailableQty,  // 实时计算的可用数量
                 'status' => $device->status,
                 'related_devices' => $relatedDevices,
                 'created_at' => $device->created_at,
@@ -133,11 +160,15 @@ class WLJController extends \Illuminate\Routing\Controller
 
         $device = Device::find($request->device_id);
 
-        // 实时计算可用库存
+        // 实时计算可用库存（总数量 - 已借出 - 损坏/不可用）
         $borrowedCount = Booking::where('device_id', $device->id)
             ->whereIn('status', ['approved', 'pending'])
             ->count();
-        $availableQty = $device->total_qty - $borrowedCount;
+        $brokenCount = Booking::where('device_id', $device->id)
+            ->where('status', 'rejected')
+            ->where('reason_type', 'device_unavailable')
+            ->count();
+        $availableQty = $device->total_qty - $borrowedCount - $brokenCount;
 
         // 检查设备是否有可用库存
         if ($availableQty <= 0) {
