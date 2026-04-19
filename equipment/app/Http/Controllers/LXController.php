@@ -116,7 +116,86 @@ class LXController extends \Illuminate\Routing\Controller
         ]);
     }
 
-    
+    /**
+     * 获取待审核归还列表（管理员功能）
+     * GET /api/admin/bookings/returning
+     */
+    public function getReturningBookings(Request $request): JsonResponse
+    {
+        // JWT 认证检查
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token已过期'
+            ], 401);
+        }
+
+        // 检查是否是管理员
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限访问，只有管理员可以查看待审核归还列表'
+            ], 403);
+        }
+
+        // 获取分页参数
+        $page = $request->input('page', 1);
+        $pageSize = $request->input('pageSize', 10);
+
+        // 获取待审核归还列表，关联用户和设备信息
+        $query = Booking::with(['user', 'device'])
+            ->where('status', Booking::STATUS_RETURNING)
+            ->orderBy('updated_at', 'desc');
+
+        $total = $query->count();
+        $bookings = $query->forPage($page, $pageSize)->get();
+
+        // 格式化返回数据
+        $list = $bookings->map(function ($booking) {
+            // 获取分类详细信息
+            $category = \App\Models\Category::where('code', $booking->device->category ?? '')->first();
+
+            return [
+                'id' => $booking->id,
+                'user_name' => $booking->user->name ?? '',
+                'device_name' => $booking->device->name ?? '',
+                'borrow_start' => $booking->borrow_start,
+                'borrow_end' => $booking->borrow_end,
+                'status' => $booking->status,
+                'created_at' => $booking->created_at,
+                'updated_at' => $booking->updated_at,
+                'user' => [
+                    'id' => $booking->user->id ?? null,
+                    'account' => $booking->user->account ?? '',
+                    'name' => $booking->user->name ?? ''
+                ],
+                'device' => [
+                    'id' => $booking->device->id ?? null,
+                    'name' => $booking->device->name ?? '',
+                    'available_qty' => $booking->device->available_qty ?? 0,
+                    'category_code' => $booking->device->category ?? '',
+                    'category' => $category ? [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'code' => $category->code,
+                    ] : null,
+                ]
+            ];
+        });
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => [
+                'total' => $total,
+                'page' => (int) $page,
+                'pageSize' => (int) $pageSize,
+                'list' => $list
+            ]
+        ]);
+    }
+
     /**
      * 审核借用申请（管理员功能）
      * PATCH /api/admin/bookings/{id}/audit
@@ -195,6 +274,82 @@ class LXController extends \Illuminate\Routing\Controller
                     'reason' => $booking->reason,
                     'reason_type' => $reasonType,
                     'device_affected' => $reasonType === 'device_unavailable'
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * 审核归还申请（管理员功能）
+     * PATCH /api/admin/bookings/{id}/return-audit
+     */
+    public function auditReturnBooking(Request $request, $id): JsonResponse
+    {
+        // JWT 认证检查
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token已过期'
+            ], 401);
+        }
+
+        // 检查是否是管理员
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限访问，只有管理员可以审核归还申请'
+            ], 403);
+        }
+
+        // 验证参数
+        $request->validate([
+            'action' => 'required|in:approve,reject',
+            'reason' => 'required_if:action,reject|string|max:255',
+        ]);
+
+        // 查找申请记录
+        $booking = Booking::find($id);
+        if (!$booking) {
+            return response()->json([
+                'code' => 404,
+                'message' => '归还记录不存在'
+            ], 404);
+        }
+
+        // 检查是否是申请归还状态
+        if ($booking->status !== Booking::STATUS_RETURNING) {
+            return response()->json([
+                'code' => 400,
+                'message' => '该记录不是申请归还状态，无法审核'
+            ], 400);
+        }
+
+        $action = $request->input('action');
+
+        if ($action === 'approve') {
+            // 批准归还
+            $booking->status = Booking::STATUS_RETURNED;
+            $booking->save();
+
+            return response()->json([
+                'code' => 200,
+                'message' => '归还申请已通过',
+                'data' => $booking
+            ]);
+        } else {
+            // 拒绝归还申请（用户需要继续借用）
+            $booking->status = Booking::STATUS_APPROVED;  // 回到已通过状态
+            $booking->return_reject_reason = $request->input('reason');  // 拒绝原因
+            $booking->save();
+
+            return response()->json([
+                'code' => 200,
+                'message' => '归还申请已拒绝，用户需继续借用',
+                'data' => [
+                    'id' => $booking->id,
+                    'status' => $booking->status,
+                    'return_reject_reason' => $booking->return_reject_reason
                 ]
             ]);
         }

@@ -91,9 +91,9 @@ class WLJController extends \Illuminate\Routing\Controller
         $category = \App\Models\Category::where('code', $device->category)->first();
         
         // 实时计算可用库存
-        // 1. 已借出 = pending + approved
+        // 1. 已借出 = pending + approved + returning
         $borrowedCount = Booking::where('device_id', $device->id)
-            ->whereIn('status', ['approved', 'pending'])
+            ->whereIn('status', ['approved', 'pending', 'returning'])
             ->count();
         
         // 2. 损坏/不可用 = 被拒绝且 reason_type = device_unavailable
@@ -112,9 +112,9 @@ class WLJController extends \Illuminate\Routing\Controller
             ->limit(5)
             ->get(['id', 'name', 'total_qty'])
             ->map(function ($relatedDevice) {
-                // 实时计算相关设备的可用库存
+                // 实时计算相关设备的可用库存（占用库存的状态：pending + approved + returning）
                 $relatedBorrowedCount = Booking::where('device_id', $relatedDevice->id)
-                    ->whereIn('status', ['approved', 'pending'])
+                    ->whereIn('status', ['approved', 'pending', 'returning'])
                     ->count();
                 $relatedBrokenCount = Booking::where('device_id', $relatedDevice->id)
                     ->where('status', 'rejected')
@@ -160,9 +160,9 @@ class WLJController extends \Illuminate\Routing\Controller
 
         $device = Device::find($request->device_id);
 
-        // 实时计算可用库存（总数量 - 已借出 - 损坏/不可用）
+        // 实时计算可用库存（占用库存的状态：pending + approved + returning）
         $borrowedCount = Booking::where('device_id', $device->id)
-            ->whereIn('status', ['approved', 'pending'])
+            ->whereIn('status', ['approved', 'pending', 'returning'])
             ->count();
         $brokenCount = Booking::where('device_id', $device->id)
             ->where('status', 'rejected')
@@ -251,7 +251,7 @@ class WLJController extends \Illuminate\Routing\Controller
         ]);
     }
 
-    // 申请归还设备
+    // 申请归还设备（用户发起，需要管理员审核）
     public function returnBooking($id)
     {
         $booking = Booking::where('id', $id)->where('user_id', Auth::id())->first();
@@ -272,12 +272,12 @@ class WLJController extends \Illuminate\Routing\Controller
             ]);
         }
 
-        // 更新状态为已归还（库存通过实时计算，无需手动恢复）
-        $booking->update(['status' => 'returned']);
+        // 更新状态为申请归还（待管理员审核）
+        $booking->update(['status' => 'returning']);
 
         return response()->json([
             'code' => 200,
-            'message' => '归还成功',
+            'message' => '归还申请已提交，等待管理员审核',
             'data' => [
                 'id' => $booking->id,
                 'status' => $booking->status,

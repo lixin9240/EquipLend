@@ -80,10 +80,11 @@ class Booking extends Model
     }
 
     // 状态常量
-    const STATUS_PENDING = 'pending';
-    const STATUS_APPROVED = 'approved';
-    const STATUS_REJECTED = 'rejected';
-    const STATUS_RETURNED = 'returned';
+    const STATUS_PENDING = 'pending';      // 待审核
+    const STATUS_APPROVED = 'approved';    // 已通过
+    const STATUS_REJECTED = 'rejected';    // 已拒绝
+    const STATUS_RETURNING = 'returning';  // 申请归还（待审核）
+    const STATUS_RETURNED = 'returned';    // 已归还
 
     /**
      * 关联用户
@@ -123,6 +124,14 @@ class Booking extends Model
     public function scopeRejected($query)
     {
         return $query->where('status', self::STATUS_REJECTED);
+    }
+
+    /**
+     * 作用域：申请归还（待审核）
+     */
+    public function scopeReturning($query)
+    {
+        return $query->where('status', self::STATUS_RETURNING);
     }
 
     /**
