@@ -222,9 +222,11 @@ class LXController extends \Illuminate\Routing\Controller
             'status' => 'required|in:available,maintenance',
         ]);
 
-        // 检查分类是否存在
-        $categoryCode = $request->input('category');
-        $category = \App\Models\Category::where('code', $categoryCode)->first();
+        // 检查分类是否存在（支持通过 name 或 code 查找）
+        $categoryInput = $request->input('category');
+        $category = \App\Models\Category::where('name', $categoryInput)
+            ->orWhere('code', $categoryInput)
+            ->first();
         if (!$category) {
             return response()->json([
                 'code' => 400,
@@ -235,7 +237,7 @@ class LXController extends \Illuminate\Routing\Controller
 
         // 检查是否已存在相同名称和分类的设备
         $existingDevice = Device::where('name', $request->input('name'))
-            ->where('category', $request->input('category'))
+            ->where('category', $category->code)
             ->first();
 
         if ($existingDevice) {
@@ -246,10 +248,10 @@ class LXController extends \Illuminate\Routing\Controller
             ], 400);
         }
 
-        // 创建设备
+        // 创建设备（存储分类 code）
         $device = Device::create([
             'name' => $request->input('name'),
-            'category' => $request->input('category'),
+            'category' => $category->code,
             'description' => $request->input('description'),
             'total_qty' => $request->input('total_qty'),
             'available_qty' => $request->input('available_qty'),
@@ -305,10 +307,13 @@ class LXController extends \Illuminate\Routing\Controller
             'status' => 'nullable|in:available,maintenance',
         ]);
 
-        // 如果更新了分类，检查分类是否存在
+        // 如果更新了分类，检查分类是否存在（支持通过 name 或 code 查找）
+        $category = null;
         if ($request->has('category')) {
-            $categoryCode = $request->input('category');
-            $category = \App\Models\Category::where('code', $categoryCode)->first();
+            $categoryInput = $request->input('category');
+            $category = \App\Models\Category::where('name', $categoryInput)
+                ->orWhere('code', $categoryInput)
+                ->first();
             if (!$category) {
                 return response()->json([
                     'code' => 400,
@@ -322,8 +327,8 @@ class LXController extends \Illuminate\Routing\Controller
         if ($request->has('name')) {
             $device->name = $request->input('name');
         }
-        if ($request->has('category')) {
-            $device->category = $request->input('category');
+        if ($request->has('category') && $category) {
+            $device->category = $category->code;
         }
         if ($request->has('description')) {
             $device->description = $request->input('description');
