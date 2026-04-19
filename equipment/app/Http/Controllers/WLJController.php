@@ -133,8 +133,14 @@ class WLJController extends \Illuminate\Routing\Controller
 
         $device = Device::find($request->device_id);
 
+        // 实时计算可用库存
+        $borrowedCount = Booking::where('device_id', $device->id)
+            ->whereIn('status', ['approved', 'pending'])
+            ->count();
+        $availableQty = $device->total_qty - $borrowedCount;
+
         // 检查设备是否有可用库存
-        if ($device->available_qty <= 0) {
+        if ($availableQty <= 0) {
             return response()->json([
                 'code' => 400,
                 'message' => '该设备当前无可用库存，请选择其他时间或设备',
@@ -151,10 +157,6 @@ class WLJController extends \Illuminate\Routing\Controller
             'purpose' => $request->purpose,
             'status' => 'pending'
         ]);
-
-        // 减少设备可用数量
-        $device->available_qty -= 1;
-        $device->save();
 
         return response()->json([
             'code' => 200,
@@ -239,13 +241,8 @@ class WLJController extends \Illuminate\Routing\Controller
             ]);
         }
 
-        // 更新状态为已归还
+        // 更新状态为已归还（库存通过实时计算，无需手动恢复）
         $booking->update(['status' => 'returned']);
-
-        // 增加设备可用数量
-        $device = $booking->device;
-        $device->available_qty += 1;
-        $device->save();
 
         return response()->json([
             'code' => 200,

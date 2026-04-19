@@ -176,7 +176,7 @@ class LXController extends \Illuminate\Routing\Controller
                 'data' => $booking
             ]);
         } else {
-            // 拒绝申请
+            // 拒绝申请（库存通过实时计算，无需手动恢复）
             $booking->status = Booking::STATUS_REJECTED;
             $booking->reason = $request->input('reason');
             $booking->save();
@@ -448,12 +448,20 @@ class LXController extends \Illuminate\Routing\Controller
 
             // 获取该分类下的设备列表（简要信息）
             $deviceList = $devices->take(5)->map(function ($device) {
+                // 实时计算库存：总库存 - 已批准但未归还的借用数量
+                $borrowedCount = \App\Models\Booking::where('device_id', $device->id)
+                    ->whereIn('status', ['approved', 'pending'])
+                    ->count();
+                $realAvailableQty = $device->total_qty - $borrowedCount;
+
                 return [
                     'id' => $device->id,
                     'name' => $device->name,
                     'status' => $device->status,
                     'total_qty' => $device->total_qty,
                     'available_qty' => $device->available_qty,
+                    'real_available_qty' => $realAvailableQty,  // 实时计算的可用数量
+                    'borrowed_count' => $borrowedCount,         // 已借出数量
                 ];
             });
 
