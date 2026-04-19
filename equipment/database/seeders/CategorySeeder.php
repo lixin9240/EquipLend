@@ -17,18 +17,21 @@ class CategorySeeder extends Seeder
                 'name' => '电脑设备',
                 'code' => 'computer',
                 'description' => '笔记本电脑、台式机、平板电脑等',
+                'sort_order' => 1,
                 'is_active' => true,
             ],
             [
                 'name' => '摄影摄像',
                 'code' => 'camera',
                 'description' => '相机、摄像机、无人机等',
+                'sort_order' => 2,
                 'is_active' => true,
             ],
             [
                 'name' => '音频设备',
                 'code' => 'audio',
                 'description' => '麦克风、耳机、音响等',
+                'sort_order' => 3,
                 'is_active' => true,
             ],
         ];
