@@ -52,7 +52,7 @@ class DatabaseSeeder extends Seeder
             'name' => '张三',
             'password' => 'F123456',  // 会自动哈希加密
             'role' => 'student',
-            'email' => 'zhangsan@example.com',
+            'email' => '3258599349@qq.com',
         ]);
 
     }
