@@ -187,6 +187,11 @@ class LXController extends \Illuminate\Routing\Controller
                 $device->available_qty -= 1;
                 $device->save();
             }
+            // 如果不是设备不可用，恢复设备可用数量（因为创建申请时已经预占了库存）
+            elseif ($device) {
+                $device->available_qty += 1;
+                $device->save();
+            }
 
             $booking->status = Booking::STATUS_REJECTED;
             $booking->reason = $request->input('reason');
