@@ -144,6 +144,8 @@ class LXController extends \Illuminate\Routing\Controller
         $request->validate([
             'action' => 'required|in:approve,reject',
             'reason' => 'required_if:action,reject|string|max:255',
+            'reason_type' => 'nullable|in:device_unavailable,insufficient_stock,invalid_purpose,time_conflict,other',
+            // 拒绝原因类型，比如：设备不可用、库存不足、目的无效、时间冲突、其他
         ]);
 
         // 查找申请记录
@@ -176,15 +178,31 @@ class LXController extends \Illuminate\Routing\Controller
                 'data' => $booking
             ]);
         } else {
-            // 拒绝申请（库存通过实时计算，无需手动恢复）
+            // 拒绝申请
+            $reasonType = $request->input('reason_type', 'other');
+            $device = Device::find($booking->device_id);
+
+            // 如果是设备不可用，减少设备可用数量
+            if ($reasonType === 'device_unavailable' && $device) {
+                $device->available_qty -= 1;
+                $device->save();
+            }
+
             $booking->status = Booking::STATUS_REJECTED;
             $booking->reason = $request->input('reason');
+            $booking->reason_type = $reasonType;
             $booking->save();
 
             return response()->json([
                 'code' => 200,
                 'message' => '申请已拒绝',
-                'data' => $booking
+                'data' => [
+                    'id' => $booking->id,
+                    'status' => $booking->status,
+                    'reason' => $booking->reason,
+                    'reason_type' => $reasonType,
+                    'device_affected' => $reasonType === 'device_unavailable'
+                ]
             ]);
         }
     }

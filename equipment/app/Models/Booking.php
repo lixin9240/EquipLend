@@ -26,6 +26,7 @@ class Booking extends Model
         'purpose',// 借用目的
         'status',// 状态
         'reason',// 拒绝原因
+        'reason_type',// 拒绝类型
     ];
 
     protected $casts = [ // 类型转换
