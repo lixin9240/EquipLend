@@ -46,6 +46,15 @@ class DatabaseSeeder extends Seeder
             'role' => 'admin',
             'email' => '2633681826@qq.com',
         ]);
+        
+        // 创建管理员账号1--LX
+        User::create([
+            'account' => 'admin126',
+            'name' => '系统管理员3',
+            'password' => 'admin123',  // 会自动哈希加密
+            'role' => 'admin',
+            'email' => '260384096@qq.com',
+        ]);
         // 创建测试学生账号1
         User::create([
             'account' => 'F2021001',
