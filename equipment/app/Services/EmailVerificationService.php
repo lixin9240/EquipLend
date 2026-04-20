@@ -15,7 +15,7 @@ class EmailVerificationService
     /**
      * 发送间隔（秒）
      */
-    const SEND_INTERVAL = 60;
+    const SEND_INTERVAL = 10;
 
     /**
      * 每日发送上限
@@ -73,7 +73,8 @@ class EmailVerificationService
         } catch (\Exception $e) {
             Cache::forget($codeKey);
             Cache::forget($intervalKey);
-            return ['success' => false, 'message' => '邮件发送失败'];
+            \Illuminate\Support\Facades\Log::error('邮件发送失败: ' . $e->getMessage());
+            return ['success' => false, 'message' => '邮件发送失败: ' . $e->getMessage()];
         }
     }
 

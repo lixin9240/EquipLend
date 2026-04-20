@@ -64,8 +64,8 @@ class LZWController extends Controller
         }
 
         // --- 新增：验证邮箱验证码 ---
-        // 说明：验证码一般存在缓存里，key格式类似 email_verification:{邮箱地址}
-        $cacheKey = 'email_verification:' . $validated['email'];
+        // 使用与 EmailVerificationService 一致的缓存 key 格式
+        $cacheKey = "email_code:{$validated['email']}:register";
         $cachedCode = cache()->get($cacheKey);
 
         if (is_null($cachedCode) || $cachedCode !== $validated['email_code']) {

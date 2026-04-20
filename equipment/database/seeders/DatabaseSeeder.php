@@ -21,15 +21,7 @@ class DatabaseSeeder extends Seeder
 
 
         // 创建管理员账号1--LX
-        User::firstOrCreate(
-            ['account' => 'admin123'],
-            [
-                'name' => '系统管理员',
-                'password' => 'admin123',
-                'role' => 'admin',
-                'email' => '3258599349@qq.com',
-            ]
-        );
+        
 
         // 创建管理员账号2--LZW
         User::firstOrCreate(
@@ -53,16 +45,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 创建管理员账号4--zxa
-        User::firstOrCreate(
-            ['account' => 'admin126'],
-            [
-                'name' => '系统管理员3',
-                'password' => 'admin126',
-                'role' => 'admin',
-                'email' => '260384096@qq.com',
-            ]
-        );
+      
 
         // 创建测试学生账号1
         User::firstOrCreate(
