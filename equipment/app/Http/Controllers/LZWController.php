@@ -32,8 +32,11 @@ class LZWController extends Controller
                 'account' => 'required|string|min:4|max:20|unique:users',
                 'name' => 'required|string|min:2|max:20',
                 'password' => 'required|string|min:6|regex:/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/',
+                // 1. 确认密码字段（和密码一致）
                 'password_confirmation' => 'required|string|same:password',
                 'email' => 'required|email|max:100|regex:/^[a-zA-Z0-9._%+-]+@qq\.com$/i',
+                // 2. 新增邮箱验证码字段
+                'email_code' => 'required|string|size:6',
                 'role' => 'nullable|string|in:student,admin',
             ], [
                 'account.min' => '账号至少4个字符',
@@ -48,6 +51,9 @@ class LZWController extends Controller
                 'email.email' => '邮箱格式不正确',
                 'email.regex' => '仅支持QQ邮箱（@qq.com）',
                 'email.max' => '邮箱最多100个字符',
+                // 新增验证码错误提示
+                'email_code.required' => '邮箱验证码不能为空',
+                'email_code.size' => '邮箱验证码必须是6位',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -56,6 +62,22 @@ class LZWController extends Controller
                 'data' => $e->errors()
             ], 422);
         }
+
+        // --- 新增：验证邮箱验证码 ---
+        // 说明：验证码一般存在缓存里，key格式类似 email_verification:{邮箱地址}
+        $cacheKey = 'email_verification:' . $validated['email'];
+        $cachedCode = cache()->get($cacheKey);
+
+        if (is_null($cachedCode) || $cachedCode !== $validated['email_code']) {
+            return response()->json([
+                'code' => 400,
+                'message' => '邮箱验证码无效或已过期',
+                'data' => null
+            ], 400);
+        }
+        // 验证成功后删除缓存中的验证码（防止重复使用）
+        cache()->forget($cacheKey);
+        // --- 验证码验证结束 ---
 
         // 检查账号是否重复
         if (User::where('account', $validated['account'])->exists()) {
@@ -69,7 +91,8 @@ class LZWController extends Controller
         $user = User::create([
             'account' => $validated['account'],
             'name' => $validated['name'],
-            'password' => $validated['password'],
+            // 密码加密存储
+            'password' => Hash::make($validated['password']),
             'email' => $validated['email'] ?? null,
             'role' => $validated['role'] ?? 'student',
         ]);
