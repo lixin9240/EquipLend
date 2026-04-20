@@ -12,7 +12,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class LZWController extends Controller
 {
-    protected $emailVerificationService;
+    protected EmailVerificationService $emailVerificationService;
 
     public function __construct(EmailVerificationService $emailVerificationService)
     {
@@ -26,7 +26,7 @@ class LZWController extends Controller
     {
         // 确保返回 JSON
         $request->headers->set('Accept', 'application/json');
-        
+
         try {
             $validated = $request->validate([
                 'account' => 'required|string|min:4|max:20|unique:users',
