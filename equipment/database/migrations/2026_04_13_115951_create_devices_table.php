@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('description')->nullable(true); // 设备描述
             $table->unsignedInteger('total_qty')->default(1)->nullable(false); // 总库存
             $table->unsignedInteger('available_qty')->default(1)->nullable(false); // 可借数量
-            $table->enum('status', ['available', 'maintenance'])->default('available')->nullable(false); // 设备状态
+            $table->enum('status', ['available', 'borrowed', 'maintenance'])->default('available')->nullable(false); // 设备状态：可借、已借出、维修中
 
             // 时间戳 & 软删除
             $table->timestamp('created_at')->useCurrent();

@@ -21,48 +21,59 @@ class DatabaseSeeder extends Seeder
 
 
         // 创建管理员账号1--LX
-        User::create([
-            'account' => 'admin123',
-            'name' => '系统管理员',
-            'password' => 'admin123',  // 会自动哈希加密
-            'role' => 'admin',
-            'email' => '3258599349@qq.com',
-        ]);
+        User::firstOrCreate(
+            ['account' => 'admin123'],
+            [
+                'name' => '系统管理员',
+                'password' => 'admin123',
+                'role' => 'admin',
+                'email' => '3258599349@qq.com',
+            ]
+        );
 
-         // 创建管理员账号2--LZW
-        User::create([
-            'account' => 'admin124',
-            'name' => '系统管理员1',
-            'password' => 'admin124',  // 会自动哈希加密
-            'role' => 'admin',
-            'email' => '193952040@qq.com',
-        ]);
+        // 创建管理员账号2--LZW
+        User::firstOrCreate(
+            ['account' => 'admin124'],
+            [
+                'name' => '系统管理员1',
+                'password' => 'admin124',
+                'role' => 'admin',
+                'email' => '193952040@qq.com',
+            ]
+        );
 
-         // 创建管理员账号--WLJ
-        User::create([
-            'account' => 'admin125',
-            'name' => '系统管理员2',
-            'password' => 'admin125',  // 会自动哈希加密
-            'role' => 'admin',
-            'email' => '2633681826@qq.com',
-        ]);
-        
-        // 创建管理员账号1--LX
-        User::create([
-            'account' => 'admin126',
-            'name' => '系统管理员3',
-            'password' => 'admin123',  // 会自动哈希加密
-            'role' => 'admin',
-            'email' => '260384096@qq.com',
-        ]);
+        // 创建管理员账号--WLJ
+        User::firstOrCreate(
+            ['account' => 'admin125'],
+            [
+                'name' => '系统管理员2',
+                'password' => 'admin125',
+                'role' => 'admin',
+                'email' => '2633681826@qq.com',
+            ]
+        );
+
+        // 创建管理员账号4--zxa
+        User::firstOrCreate(
+            ['account' => 'admin126'],
+            [
+                'name' => '系统管理员3',
+                'password' => 'admin126',
+                'role' => 'admin',
+                'email' => '260384096@qq.com',
+            ]
+        );
+
         // 创建测试学生账号1
-        User::create([
-            'account' => 'F2021001',
-            'name' => '张三',
-            'password' => 'F123456',  // 会自动哈希加密
-            'role' => 'student',
-            'email' => '3258599349@qq.com',
-        ]);
+        User::firstOrCreate(
+            ['account' => 'F2021001'],
+            [
+                'name' => '张三',
+                'password' => 'F123456',
+                'role' => 'student',
+                'email' => '3258599349@qq.com',
+            ]
+        );
 
     }
 }
