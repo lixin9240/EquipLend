@@ -236,8 +236,16 @@ class LZWController extends Controller
         // 1. 验证参数
         $validated = $request->validate([
             'account' => 'required|string',
-            'email' => 'required|email',
-            'password' => 'required|string|min:6',
+            'email' => 'required|email|regex:/^[a-zA-Z0-9._%+-]+@qq\.com$/i',
+            'code' => 'required|string|size:6',
+            'password' => 'required|string|min:6|regex:/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/',
+            'password_confirmation' => 'required|string|same:password',
+        ], [
+            'email.regex' => '仅支持QQ邮箱（@qq.com）',
+            'code.size' => '验证码必须是6位数字',
+            'password.min' => '密码至少6个字符',
+            'password.regex' => '密码必须同时包含英文字母和数字',
+            'password_confirmation.same' => '两次输入的密码不一致',
         ]);
 
         // 2. 查询用户是否存在
@@ -260,12 +268,21 @@ class LZWController extends Controller
             ]);
         }
 
-        // 4. 重置密码
+        // 4. 验证邮箱验证码
+        if (!$this->emailVerificationService->verifyCode($validated['email'], $validated['code'], 'reset_password')) {
+            return response()->json([
+                'code' => 400,
+                'message' => '验证码错误或已过期',
+                'data' => null
+            ]);
+        }
+
+        // 5. 重置密码
         $user->update([
             'password' => $validated['password']
         ]);
 
-        // 5. 返回成功
+        // 6. 返回成功
         return response()->json([
             'code' => 200,
             'message' => '密码重置成功',
@@ -337,7 +354,7 @@ class LZWController extends Controller
         try {
             $validated = $request->validate([
                 'email' => 'required|email',
-                'type' => 'nullable|string|in:register,reset_password,bind,login',//验证码类型，注册，用户登录，重置密码，绑定新邮箱等
+                'type' => 'nullable|string|in:register,reset_password,bind',//验证码类型，注册，重置密码，绑定新邮箱等
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -364,8 +381,7 @@ class LZWController extends Controller
                 break;
 
             case 'reset_password':
-            case 'login':
-                // 重置密码和登录时检查邮箱是否存在
+                // 重置密码时检查邮箱是否存在
                 if (!User::where('email', $email)->exists()) {
                     return response()->json([
                         'code' => 400,
