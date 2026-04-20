@@ -19,8 +19,8 @@ return new class extends Migration
             $table->date('borrow_start')->nullable(false); // 借用开始日期
             $table->date('borrow_end')->nullable(false); // 借用结束日期
             $table->text('purpose')->nullable(true); // 借用用途
-            $table->enum('status', ['pending', 'approved', 'rejected', 'returned'])
-                  ->default('pending')->nullable(false); // 申请状态
+            $table->enum('status', ['pending', 'approved', 'rejected', 'returned'])//
+                  ->default('pending')->nullable(false); // 申请状态，比如待审核、已通过、已拒绝、已归还
             $table->string('reason')->nullable(true); // 拒绝原因
 
             // 时间戳 & 软删除

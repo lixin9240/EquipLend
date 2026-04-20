@@ -18,12 +18,21 @@ class WLJController extends \Illuminate\Routing\Controller
 
         // 筛选条件
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%')
-                  ->orWhere('description', 'like', '%' . $request->name . '%');
+            $keyword = $request->input('name');
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', '%' . $keyword . '%')
+                  ->orWhere('description', 'like', '%' . $keyword . '%');
+            });
         }
 
+        // 支持按分类编码或分类名称筛选
         if ($request->has('category')) {
-            $query->where('category', $request->category);
+            $categoryValue = $request->input('category');
+            // 先尝试按code匹配，如果没有再尝试按name匹配
+            $categoryCode = \App\Models\Category::where('code', $categoryValue)
+                ->orWhere('name', $categoryValue)
+                ->value('code');
+            $query->where('category', $categoryCode ?: $categoryValue);
         }
 
         if ($request->has('status')) {
@@ -36,6 +45,24 @@ class WLJController extends \Illuminate\Routing\Controller
 
         $devices = $query->paginate($pageSize, ['*'], 'page', $page);
 
+        // 获取分类信息并格式化数据
+        $categories = \App\Models\Category::pluck('name', 'code')->toArray();
+        
+        $list = collect($devices->items())->map(function ($device) use ($categories) {
+            return [
+                'id' => $device->id,
+                'name' => $device->name,
+                'category' => $device->category,
+                'category_name' => $categories[$device->category] ?? $device->category,
+                'description' => $device->description,
+                'total_qty' => $device->total_qty,
+                'available_qty' => $device->available_qty,
+                'status' => $device->status,
+                'created_at' => $device->created_at,
+                'updated_at' => $device->updated_at,
+            ];
+        });
+
         return response()->json([
             'code' => 200,
             'message' => '获取成功',
@@ -43,7 +70,7 @@ class WLJController extends \Illuminate\Routing\Controller
                 'total' => $devices->total(),
                 'page' => $devices->currentPage(),
                 'pageSize' => $devices->perPage(),
-                'list' => $devices->items()
+                'list' => $list
             ]
         ]);
     }
@@ -61,10 +88,64 @@ class WLJController extends \Illuminate\Routing\Controller
             ]);
         }
 
+        // 获取分类信息
+        $category = \App\Models\Category::where('code', $device->category)->first();
+        
+        // 实时计算可用库存
+        // 1. 已借出 = pending + approved + returning
+        $borrowedCount = Booking::where('device_id', $device->id)
+            ->whereIn('status', ['approved', 'pending', 'returning'])
+            ->count();
+        
+        // 2. 损坏/不可用 = 被拒绝且 reason_type = device_unavailable
+        $brokenCount = Booking::where('device_id', $device->id)
+            ->where('status', 'rejected')
+            ->where('reason_type', 'device_unavailable')
+            ->count();
+        
+        // 3. 可用数量 = 总数量 - 已借出 - 损坏/不可用
+        $realAvailableQty = $device->total_qty - $borrowedCount - $brokenCount;
+        
+        // 获取相关设备（同分类）
+        $relatedDevices = Device::where('category', $device->category)
+            ->where('id', '!=', $device->id)
+            ->where('status', 'available')
+            ->limit(5)
+            ->get(['id', 'name', 'total_qty'])
+            ->map(function ($relatedDevice) {
+                // 实时计算相关设备的可用库存（占用库存的状态：pending + approved + returning）
+                $relatedBorrowedCount = Booking::where('device_id', $relatedDevice->id)
+                    ->whereIn('status', ['approved', 'pending', 'returning'])
+                    ->count();
+                $relatedBrokenCount = Booking::where('device_id', $relatedDevice->id)
+                    ->where('status', 'rejected')
+                    ->where('reason_type', 'device_unavailable')
+                    ->count();
+                $relatedDevice->available_qty = $relatedDevice->total_qty - $relatedBorrowedCount - $relatedBrokenCount;
+                return $relatedDevice;
+            });
+
         return response()->json([
             'code' => 200,
             'message' => '获取成功',
-            'data' => $device
+            'data' => [
+                'id' => $device->id,
+                'name' => $device->name,
+                'category' => $device->category,
+                'category_info' => $category ? [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'code' => $category->code,
+                    'description' => $category->description,
+                ] : null,
+                'description' => $device->description,
+                'total_qty' => $device->total_qty,
+                'available_qty' => $realAvailableQty,  // 实时计算的可用数量
+                'status' => $device->status,
+                'related_devices' => $relatedDevices,
+                'created_at' => $device->created_at,
+                'updated_at' => $device->updated_at,
+            ]
         ]);
     }
 
@@ -80,8 +161,18 @@ class WLJController extends \Illuminate\Routing\Controller
 
         $device = Device::find($request->device_id);
 
+        // 实时计算可用库存（占用库存的状态：pending + approved + returning）
+        $borrowedCount = Booking::where('device_id', $device->id)
+            ->whereIn('status', ['approved', 'pending', 'returning'])
+            ->count();
+        $brokenCount = Booking::where('device_id', $device->id)
+            ->where('status', 'rejected')
+            ->where('reason_type', 'device_unavailable')
+            ->count();
+        $availableQty = $device->total_qty - $borrowedCount - $brokenCount;
+
         // 检查设备是否有可用库存
-        if ($device->available_qty <= 0) {
+        if ($availableQty <= 0) {
             return response()->json([
                 'code' => 400,
                 'message' => '该设备当前无可用库存，请选择其他时间或设备',
@@ -98,10 +189,6 @@ class WLJController extends \Illuminate\Routing\Controller
             'purpose' => $request->purpose,
             'status' => 'pending'
         ]);
-
-        // 减少设备可用数量
-        $device->available_qty -= 1;
-        $device->save();
 
         return response()->json([
             'code' => 200,
@@ -128,17 +215,27 @@ class WLJController extends \Illuminate\Routing\Controller
 
         // 格式化数据
         $list = $bookings->map(function ($booking) {
+            // 获取分类详细信息
+            $category = \App\Models\Category::where('code', $booking->device->category)->first();
+
             return [
                 'id' => $booking->id,
                 'device_name' => $booking->device->name,
                 'borrow_start' => $booking->borrow_start,
                 'borrow_end' => $booking->borrow_end,
+                'purpose' => $booking->purpose,
                 'status' => $booking->status,
                 'created_at' => $booking->created_at,
                 'device' => [
                     'id' => $booking->device->id,
                     'name' => $booking->device->name,
-                    'category' => $booking->device->category
+                    'category_code' => $booking->device->category,
+                    'category' => $category ? [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'code' => $category->code,
+                        'description' => $category->description,
+                    ] : null,
                 ]
             ];
         });
@@ -155,7 +252,7 @@ class WLJController extends \Illuminate\Routing\Controller
         ]);
     }
 
-    // 申请归还设备
+    // 申请归还设备（用户发起，需要管理员审核）
     public function returnBooking($id)
     {
         $booking = Booking::where('id', $id)->where('user_id', Auth::id())->first();
@@ -176,17 +273,12 @@ class WLJController extends \Illuminate\Routing\Controller
             ]);
         }
 
-        // 更新状态为已归还
-        $booking->update(['status' => 'returned']);
-
-        // 增加设备可用数量
-        $device = $booking->device;
-        $device->available_qty += 1;
-        $device->save();
+        // 更新状态为申请归还（待管理员审核）
+        $booking->update(['status' => 'returning']);
 
         return response()->json([
             'code' => 200,
-            'message' => '归还成功',
+            'message' => '归还申请已提交，等待管理员审核',
             'data' => [
                 'id' => $booking->id,
                 'status' => $booking->status,
@@ -205,6 +297,15 @@ class WLJController extends \Illuminate\Routing\Controller
             return response()->json([
                 'code' => 401,
                 'message' => '未登录',
+    // 编辑设备信息
+    public function updateDevice(Request $request, $id)
+    {
+        $device = Device::find($id);
+
+        if (!$device) {
+            return response()->json([
+                'code' => 404,
+                'message' => '设备不存在',
                 'data' => null
             ]);
         }
@@ -215,6 +316,54 @@ class WLJController extends \Illuminate\Routing\Controller
             'code' => 200,
             'message' => '账号已注销',
             'data' => null
+        $request->validate([
+            'name' => 'nullable|string|max:100',
+            'category' => 'nullable|string|max:50',
+            'description' => 'nullable|string',
+            'total_qty' => 'nullable|integer|min:1',
+            'available_qty' => 'nullable|integer|min:0',
+            'status' => 'nullable|in:available,maintenance',
+        ]);
+
+        // 如果更新了分类，检查分类是否存在
+        if ($request->has('category')) {
+            $categoryCode = $request->input('category');
+            $category = \App\Models\Category::where('code', $categoryCode)->first();
+            if (!$category) {
+                return response()->json([
+                    'code' => 400,
+                    'message' => '设备分类不存在，请先创建分类或使用现有分类',
+                    'data' => null
+                ], 400);
+            }
+        }
+
+        // 更新设备（只更新传了的字段）
+        if ($request->has('name')) {
+            $device->name = $request->input('name');
+        }
+        if ($request->has('category')) {
+            $device->category = $request->input('category');
+        }
+        if ($request->has('description')) {
+            $device->description = $request->input('description');
+        }
+        if ($request->has('total_qty')) {
+            $device->total_qty = $request->input('total_qty');
+        }
+        if ($request->has('available_qty')) {
+            $device->available_qty = $request->input('available_qty');
+        }
+        if ($request->has('status')) {
+            $device->status = $request->input('status');
+        }
+
+        $device->save();
+
+        return response()->json([
+            'code' => 200,
+            'message' => '设备更新成功',
+            'data' => $device
         ]);
     }
 }

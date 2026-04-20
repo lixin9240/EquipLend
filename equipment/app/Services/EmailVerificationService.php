@@ -39,12 +39,12 @@ class EmailVerificationService
             return ['success' => false, 'message' => "发送过于频繁，请{$remaining}秒后再试"];
         }
 
-        // 检查每日发送上限
-        $dailyKey = "email_daily:{$email}:" . date('Y-m-d');
-        $dailyCount = Cache::get($dailyKey, 0);
-        if ($dailyCount >= self::DAILY_LIMIT) {
-            return ['success' => false, 'message' => '今日发送次数已达上限'];
-        }
+        // 每日发送上限限制已移除（可无限发送）
+        // $dailyKey = "email_daily:{$email}:" . date('Y-m-d');
+        // $dailyCount = Cache::get($dailyKey, 0);
+        // if ($dailyCount >= self::DAILY_LIMIT) {
+        //     return ['success' => false, 'message' => '今日发送次数已达上限'];
+        // }
 
         // 生成6位数字验证码
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -56,8 +56,8 @@ class EmailVerificationService
         // 设置发送间隔限制
         Cache::put($intervalKey, time() + self::SEND_INTERVAL, now()->addSeconds(self::SEND_INTERVAL));
 
-        // 增加每日发送计数
-        Cache::put($dailyKey, $dailyCount + 1, now()->endOfDay());
+        // 每日发送计数已移除
+        // Cache::put($dailyKey, $dailyCount + 1, now()->endOfDay());
 
         // 发送邮件
         try {

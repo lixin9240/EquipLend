@@ -16,11 +16,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // 先填充设备分类
+        $this->call(CategorySeeder::class);
+
+
         // 创建管理员账号1--LX
         User::create([
             'account' => 'admin123',
             'name' => '系统管理员',
-            'password' => 'admin124',  // 会自动哈希加密
+            'password' => 'admin123',  // 会自动哈希加密
             'role' => 'admin',
             'email' => '3258599349@qq.com',
         ]);
@@ -44,11 +48,11 @@ class DatabaseSeeder extends Seeder
         ]);
         // 创建测试学生账号1
         User::create([
-            'account' => '2021001',
+            'account' => 'F2021001',
             'name' => '张三',
-            'password' => '123456',  // 会自动哈希加密
+            'password' => 'F123456',  // 会自动哈希加密
             'role' => 'student',
-            'email' => 'zhangsan@example.com',
+            'email' => '3258599349@qq.com',
         ]);
 
     }

@@ -6,36 +6,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Device extends Model
+class Category extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'devices';
-
-    protected $primaryKey = 'id';
-
-    public $incrementing = true;
-
-    protected $keyType = 'int';
+    protected $table = 'categories';
 
     protected $fillable = [
-        'name',// 设备名称
-        'category',// 设备分类
-        'description',// 设备描述
-        'total_qty',// 总库存
-        'available_qty',// 可借数量
-        'status',// 设备状态
+        'name',        // 分类名称
+        'code',        // 分类编码
+        'description', // 分类描述
+        'sort_order',  // 排序
+        'is_active',   // 是否启用
     ];
 
     protected $casts = [
-        'total_qty' => 'integer',
-        'available_qty' => 'integer',
+        'sort_order' => 'integer',
+        'is_active' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
-
-    protected $dates = ['created_at', 'updated_at', 'deleted_at'];
 
     /**
      * 获取创建时间（北京时间）
@@ -61,39 +52,27 @@ class Device extends Model
         return $value ? \Carbon\Carbon::parse($value)->timezone('Asia/Shanghai')->format('Y-m-d H:i:s') : null;
     }
 
-    // 状态常量
-    const STATUS_AVAILABLE = 'available';
-    const STATUS_MAINTENANCE = 'maintenance';
-
     /**
-     * 设备借用记录
+     * 关联设备
      */
-    public function bookings()
+    public function devices()
     {
-        return $this->hasMany(Booking::class);
+        return $this->hasMany(Device::class, 'category', 'code');
     }
 
     /**
-     * 作用域：可借用
+     * 作用域：启用的分类
      */
-    public function scopeAvailable($query)
+    public function scopeActive($query)
     {
-        return $query->where('status', self::STATUS_AVAILABLE);
+        return $query->where('is_active', true);
     }
 
     /**
-     * 作用域：维护中
+     * 作用域：按排序
      */
-    public function scopeMaintenance($query)
+    public function scopeOrdered($query)
     {
-        return $query->where('status', self::STATUS_MAINTENANCE);
-    }
-
-    /**
-     * 是否有库存
-     */
-    public function inStock(): bool
-    {
-        return $this->available_qty > 0;
+        return $query->orderBy('sort_order', 'asc')->orderBy('id', 'asc');
     }
 }
