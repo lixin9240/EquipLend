@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\Booking;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -191,6 +192,29 @@ class WLJController extends \Illuminate\Routing\Controller
                 'status' => $booking->status,
                 'updated_at' => $booking->updated_at
             ]
+        ]);
+    }
+
+    // 注销账号（硬删除）
+    public function deleteAccount(Request $request)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录',
+                'data' => null
+            ]);
+        }
+
+        $user->forceDelete();
+
+        return response()->json([
+            'code' => 200,
+            'message' => '账号已注销',
+            'data' => null
         ]);
     }
 }

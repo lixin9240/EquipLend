@@ -34,6 +34,9 @@ use Illuminate\Support\Facades\Route;
     // 我的借用记录模块
     Route::get('/bookings/my', [WLJController::class, 'getMyBookings']);
     Route::patch('/bookings/{id}/return', [WLJController::class, 'returnBooking']);
+
+    // 注销账号
+    Route::delete('/account', [WLJController::class, 'deleteAccount']);//注销账号
     // 获取待审核申请列表
     Route::get('/admin/bookings/pending', [LXController::class, 'getPendingBookings']);//获取待审核申请列表
     Route::patch('/admin/bookings/{id}/audit', [LXController::class, 'auditBooking']);//审核借用申请
