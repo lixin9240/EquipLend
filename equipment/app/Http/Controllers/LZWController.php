@@ -88,7 +88,7 @@ class LZWController extends Controller
         $user = User::create([
             'account' => $validated['account'],
             'name' => $validated['name'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'email' => $validated['email'] ?? null,
 
             // ###########################
