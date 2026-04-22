@@ -6,13 +6,13 @@ use App\Http\Controllers\WLJController;
 use Illuminate\Support\Facades\Route;
 
 
-    // 公开接口 
+    // 公开接口
     Route::post('/auth/register', [LZWController::class, 'register']);//注册
     Route::post('/auth/login', [LZWController::class, 'login']);//登录（需要邮箱验证码）
     Route::post('/auth/forget-password', [LZWController::class, 'forgetPassword']);//忘记密码
     Route::post('/auth/send-email-code', [LZWController::class, 'sendEmailCode']);//发送邮箱验证码
 
-   
+
     // 分类接口
     Route::group(['middleware' => 'jwt.auth', 'prefix' => 'categories'], function () {
         Route::get('/', [LXController::class, 'getCategories']);           // 获取分类列表（管理员功能）
@@ -28,7 +28,10 @@ use Illuminate\Support\Facades\Route;
     Route::post('/auth/logout', [LZWController::class, 'logout']);//退出登录
     Route::put('/auth/profile', [LZWController::class, 'updateProfile']);//更新用户信息
     // 管理员接口
-    Route::get('/admin/users', [LZWController::class, 'adminUsers']);//获取所有用户列表
+        Route::middleware('admin')->group(function () {
+            // 仅 LZWController 管理员接口
+            Route::get('/admin/users', [LZWController::class, 'adminUsers']);
+        });
 
     // =======================================
     // 设备分类模块（管理员接口）

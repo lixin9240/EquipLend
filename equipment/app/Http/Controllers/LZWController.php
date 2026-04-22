@@ -32,12 +32,13 @@ class LZWController extends Controller
                 'account' => 'required|string|min:4|max:20|unique:users',
                 'name' => 'required|string|min:2|max:20',
                 'password' => 'required|string|min:6|regex:/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/',
-                // 1. 确认密码字段（和密码一致）
                 'password_confirmation' => 'required|string|same:password',
                 'email' => 'required|email|max:100|regex:/^[a-zA-Z0-9._%+-]+@qq\.com$/i',
-                // 2. 新增邮箱验证码字段
                 'email_code' => 'required|string|size:6',
-                'role' => 'nullable|string|in:student,admin',
+
+                // ###########################
+                // 第1处修改：直接删掉 role 验证！不让前端传！
+                // ###########################
             ], [
                 'account.min' => '账号至少4个字符',
                 'account.max' => '账号最多20个字符',
@@ -51,7 +52,6 @@ class LZWController extends Controller
                 'email.email' => '邮箱格式不正确',
                 'email.regex' => '仅支持QQ邮箱（@qq.com）',
                 'email.max' => '邮箱最多100个字符',
-                // 新增验证码错误提示
                 'email_code.required' => '邮箱验证码不能为空',
                 'email_code.size' => '邮箱验证码必须是6位',
             ]);
@@ -63,8 +63,7 @@ class LZWController extends Controller
             ], 422);
         }
 
-        // --- 新增：验证邮箱验证码 ---
-        // 使用与 EmailVerificationService 一致的缓存 key 格式
+        // 验证邮箱验证码
         $cacheKey = "email_code:{$validated['email']}:register";
         $cachedCode = cache()->get($cacheKey);
 
@@ -75,9 +74,7 @@ class LZWController extends Controller
                 'data' => null
             ], 400);
         }
-        // 验证成功后删除缓存中的验证码（防止重复使用）
         cache()->forget($cacheKey);
-        // --- 验证码验证结束 ---
 
         // 检查账号是否重复
         if (User::where('account', $validated['account'])->exists()) {
@@ -91,10 +88,13 @@ class LZWController extends Controller
         $user = User::create([
             'account' => $validated['account'],
             'name' => $validated['name'],
-            // 密码加密存储
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'email' => $validated['email'] ?? null,
-            'role' => $validated['role'] ?? 'student',
+
+            // ###########################
+            // 第2处修改：强制写死角色为 student
+            // ###########################
+            'role' => 'student',  // 这里写死！永远不会是管理员！
         ]);
 
         return response()->json([
