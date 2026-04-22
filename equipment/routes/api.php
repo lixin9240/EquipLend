@@ -28,10 +28,9 @@ use Illuminate\Support\Facades\Route;
     Route::post('/auth/logout', [LZWController::class, 'logout']);//退出登录
     Route::put('/auth/profile', [LZWController::class, 'updateProfile']);//更新用户信息
     // 管理员接口
-        Route::middleware('admin')->group(function () {
-            // 仅 LZWController 管理员接口
+       
             Route::get('/admin/users', [LZWController::class, 'adminUsers']);
-        });
+        
 
     // =======================================
     // 设备分类模块（管理员接口）
@@ -50,14 +49,13 @@ use Illuminate\Support\Facades\Route;
     Route::post('/bookings', [WLJController::class, 'createBooking']);//创建借用申请
 
     // 我的借用记录模块
-    Route::get('/bookings/my', [WLJController::class, 'getMyBookings']);
-    Route::patch('/bookings/{id}/return', [WLJController::class, 'returnBooking']);
+    Route::get('/bookings/my', [WLJController::class, 'getMyBookings']);//获取我的借用记录
+    Route::patch('/bookings/{id}/return', [WLJController::class, 'returnBooking']);//归还设备
 
     // 注销账号
     Route::delete('/account', [WLJController::class, 'deleteAccount']);//注销账号
     // 获取待审核申请列表
-    Route::get('/bookings/my', [WLJController::class, 'getMyBookings']);//获取我的借用记录
-    Route::patch('/bookings/{id}/return', [WLJController::class, 'returnBooking']);//归还设备
+   
     Route::get('/admin/bookings/pending', [LXController::class, 'getPendingBookings']);//获取待审核申请列表
     Route::patch('/admin/bookings/{id}/audit', [LXController::class, 'auditBooking']);//审核借用申请
     Route::get('/admin/bookings/returning', [LXController::class, 'getReturningBookings']);//获取待审核归还列表
