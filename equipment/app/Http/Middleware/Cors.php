@@ -17,19 +17,26 @@ class Cors
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // 设置 CORS 响应头
+        $headers = [
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept',
+            'Access-Control-Expose-Headers' => 'Authorization',
+            'Access-Control-Max-Age' => '86400',
+        ];
+
         // 处理预检请求（OPTIONS）
         if ($request->isMethod('OPTIONS')) {
-            $response = response('', 200);
-        } else {
-            $response = $next($request);
+            return response('', 204, $headers);
         }
 
-        // 设置 CORS 响应头
-        $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN');
-        $response->headers->set('Access-Control-Expose-Headers', 'Authorization');
-        $response->headers->set('Access-Control-Max-Age', '86400');
+        $response = $next($request);
+
+        // 添加 CORS 头到响应
+        foreach ($headers as $key => $value) {
+            $response->headers->set($key, $value);
+        }
 
         return $response;
     }

@@ -132,19 +132,17 @@ class LZWController extends Controller
             ], 401);
         }
 
-        // 2. 验证密码
-        $credentials = [
-            'account' => $validated['account'],
-            'password' => $validated['password'],
-        ];
-
-        if (!$token = JWTAuth::attempt($credentials)) {
+        // 2. 验证密码（使用 Hash::check 直接验证）
+        if (!Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'code' => 401,
                 'message' => '密码错误',
                 'data' => null
             ], 401);
         }
+
+        // 3. 生成 JWT Token
+        $token = JWTAuth::fromUser($user);
 
         // 3. 返回登录成功信息和token
         return response()->json([
