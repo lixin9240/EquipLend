@@ -555,7 +555,10 @@ class LXController extends \Illuminate\Routing\Controller
 
         return response()->json([
             'code' => 200,
-            'message' => '设备已下架'
+            'message' => '设备已下架',
+            'data' => [
+                'id' => $device->id
+            ]
         ]);
     }
 
