@@ -43,3 +43,24 @@
 # 本地自定义辅助脚本/文件（示例）
 #/local-scripts/
 #*.local.php
+
+
+# Laravel 缓存文件（必须忽略）
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+/storage/framework/*
+/storage/logs/*
+/storage/temp/*
+/storage/debugbar/*
+
+# 编辑器临时文件
+*.swp
+*.swo
+*~
+
+# 测试、临时文件
+.phpunit.result.cache
+.phpunit.cache
+
+/storage/framework/cache/*
