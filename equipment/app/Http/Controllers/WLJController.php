@@ -45,21 +45,15 @@ class WLJController extends \Illuminate\Routing\Controller
 
         $devices = $query->paginate($pageSize, ['*'], 'page', $page);
 
-        // 获取分类信息并格式化数据
+        // 获取分类信息并格式化数据（只返回必要字段）
         $categories = \App\Models\Category::pluck('name', 'code')->toArray();
         
         $list = collect($devices->items())->map(function ($device) use ($categories) {
             return [
-                'id' => $device->id,
                 'name' => $device->name,
-                'category' => $device->category,
-                'category_name' => $categories[$device->category] ?? $device->category,
-                'description' => $device->description,
-                'total_qty' => $device->total_qty,
-                'available_qty' => $device->available_qty,
+                'category' => $categories[$device->category] ?? $device->category,
                 'status' => $device->status,
-                'created_at' => $device->created_at,
-                'updated_at' => $device->updated_at,
+                'stock' => $device->available_qty,  // 库存（可借数量）
             ];
         });
 

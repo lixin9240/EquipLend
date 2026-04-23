@@ -96,4 +96,22 @@ class Device extends Model
     {
         return $this->available_qty > 0;
     }
+
+    /**
+     * 模型启动时注册事件
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // 创建或更新前验证分类是否存在
+        static::saving(function ($device) {
+            if ($device->isDirty('category')) {
+                $category = \App\Models\Category::where('code', $device->category)->first();
+                if (!$category) {
+                    throw new \Exception("设备分类 '{$device->category}' 不存在，请先创建分类");
+                }
+            }
+        });
+    }
 }
