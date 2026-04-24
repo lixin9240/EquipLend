@@ -16,6 +16,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('user_id')->nullable(false); // 关联用户
             $table->unsignedBigInteger('device_id')->nullable(false); // 关联设备
+            $table->string('device_name', 100)->nullable()->comment('设备名称（冗余字段，方便查询）');
             $table->date('borrow_start')->nullable(false); // 借用开始日期
             $table->date('borrow_end')->nullable(false); // 借用结束日期
             $table->text('purpose')->nullable(true); // 借用用途

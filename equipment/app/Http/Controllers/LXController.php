@@ -246,6 +246,10 @@ class LXController extends \Illuminate\Routing\Controller
 
         $action = $request->input('action');
 
+        // 获取设备信息
+        $device = \App\Models\Device::find($booking->device_id);
+        $deviceName = $device ? $device->name : '未知设备';
+
         if ($action === 'approve') {
             // 批准申请
             $booking->status = Booking::STATUS_APPROVED;
@@ -254,7 +258,15 @@ class LXController extends \Illuminate\Routing\Controller
             return response()->json([
                 'code' => 200,
                 'message' => '申请已通过',
-                'data' => $booking
+                'data' => [
+                    'id' => $booking->id,
+                    'device_id' => $booking->device_id,
+                    'device_name' => $deviceName,
+                    'status' => $booking->status,
+                    'borrow_start' => $booking->borrow_start,
+                    'borrow_end' => $booking->borrow_end,
+                    'purpose' => $booking->purpose
+                ]
             ]);
         } else {
             // 拒绝申请（库存通过实时计算，无需手动维护）
@@ -270,6 +282,8 @@ class LXController extends \Illuminate\Routing\Controller
                 'message' => '申请已拒绝',
                 'data' => [
                     'id' => $booking->id,
+                    'device_id' => $booking->device_id,
+                    'device_name' => $deviceName,
                     'status' => $booking->status,
                     'reason' => $booking->reason,
                     'reason_type' => $reasonType,

@@ -49,10 +49,10 @@ class DatabaseSeeder extends Seeder
 
         // 创建测试学生账号1
         User::firstOrCreate(
-            ['account' => 'F2021001'],
+            ['account' => '25010420521'],
             [
-                'name' => '张三',
-                'password' => 'F123456',
+                'name' => '李四',
+                'password' => 'F123457',
                 'role' => 'student',
                 'email' => '3258599349@qq.com',
             ]
