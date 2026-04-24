@@ -945,4 +945,52 @@ class LXController extends \Illuminate\Routing\Controller
             ]
         ]);
     }
+    /**
+     * 注销用户账号（管理员功能）
+     * DELETE /api/admin/users/{id}
+     */
+    public function deactivateUser($id): JsonResponse
+    {
+        // JWT 认证检查
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token已过期'
+            ], 401);
+        }
+
+        // 检查是否是管理员
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限访问，只有管理员可以注销用户账号'
+            ], 403);
+        }
+
+        // 查找用户
+        $targetUser = \App\Models\User::find($id);
+        if (!$targetUser) {
+            return response()->json([
+                'code' => 404,
+                'message' => '用户不存在'
+            ], 404);
+        }
+
+        // 防止管理员注销自己
+        if ($targetUser->id === $user->id) {
+            return response()->json([
+                'code' => 400,
+                'message' => '不能注销自己的账号'
+            ], 400);
+        }
+
+        // 删除用户（软删除）
+        $targetUser->delete();
+
+        return response()->json([
+            'code' => 200,
+            'message' => '用户账号已注销'
+        ]);
+    }
 }
