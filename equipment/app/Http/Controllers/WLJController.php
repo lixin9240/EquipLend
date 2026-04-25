@@ -156,6 +156,15 @@ class WLJController extends \Illuminate\Routing\Controller
 
         $device = Device::find($request->device_id);
 
+        // 检查设备是否存在（未下架）
+        if (!$device) {
+            return response()->json([
+                'code' => 400,
+                'message' => '该设备已下架，无法借用',
+                'data' => null
+            ], 400);
+        }
+
         // 实时计算可用库存（占用库存的状态：pending + approved + returning）
         $borrowedCount = Booking::where('device_id', $device->id)
             ->whereIn('status', ['approved', 'pending', 'returning'])
