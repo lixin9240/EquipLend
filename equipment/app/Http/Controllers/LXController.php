@@ -143,8 +143,12 @@ class LXController extends \Illuminate\Routing\Controller
         $page = $request->input('page', 1);
         $pageSize = $request->input('pageSize', 10);
 
-        // 获取待审核归还列表，关联用户和设备信息
-        $query = Booking::with(['user', 'device'])
+        // 获取待审核归还列表，关联用户和设备信息（包含软删除的）
+        $query = Booking::with(['user' => function($q) {
+                $q->withTrashed();
+            }, 'device' => function($q) {
+                $q->withTrashed();
+            }])
             ->where('status', Booking::STATUS_RETURNING)
             ->orderBy('updated_at', 'desc');
 
@@ -352,14 +356,14 @@ class LXController extends \Illuminate\Routing\Controller
                 'data' => $booking
             ]);
         } else {
-            // 拒绝归还申请（用户需要继续借用）
-            $booking->status = Booking::STATUS_APPROVED;  // 回到已通过状态
+            // 拒绝归还申请
+            $booking->status = Booking::STATUS_RETURN_REJECTED;  // 设置为拒绝归还状态
             $booking->return_reject_reason = $request->input('reason');  // 拒绝原因
             $booking->save();
 
             return response()->json([
                 'code' => 200,
-                'message' => '归还申请已拒绝，用户需继续借用',
+                'message' => '归还申请已拒绝',
                 'data' => [
                     'id' => $booking->id,
                     'status' => $booking->status,
@@ -367,6 +371,229 @@ class LXController extends \Illuminate\Routing\Controller
                 ]
             ]);
         }
+    }
+
+    /**
+     * 获取已归还列表（管理员功能）
+     * GET /api/admin/bookings/returned
+     */
+    public function getReturnedBookings(Request $request): JsonResponse
+    {
+        // JWT 认证检查
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token已过期'
+            ], 401);
+        }
+
+        // 检查是否是管理员
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限访问，只有管理员可以查看已归还列表'
+            ], 403);
+        }
+
+        // 获取分页参数
+        $page = $request->input('page', 1);
+        $pageSize = $request->input('pageSize', 10);
+
+        // 获取已归还列表
+        $query = Booking::with(['user' => function($q) {
+                $q->withTrashed();
+            }, 'device' => function($q) {
+                $q->withTrashed();
+            }])
+            ->where('status', Booking::STATUS_RETURNED)
+            ->orderBy('updated_at', 'desc');
+
+        $total = $query->count();
+        $bookings = $query->forPage($page, $pageSize)->get();
+
+        // 格式化返回数据
+        $list = $bookings->map(function ($booking) {
+            return [
+                'id' => $booking->id,
+                'user_name' => $booking->user->name ?? '',
+                'device_name' => $booking->device->name ?? '',
+                'borrow_start' => $booking->borrow_start,
+                'borrow_end' => $booking->borrow_end,
+                'status' => $booking->status,
+                'created_at' => $booking->created_at,
+                'updated_at' => $booking->updated_at,
+                'user' => [
+                    'id' => $booking->user->id ?? null,
+                    'account' => $booking->user->account ?? '',
+                    'name' => $booking->user->name ?? ''
+                ],
+                'device' => [
+                    'id' => $booking->device->id ?? null,
+                    'name' => $booking->device->name ?? '',
+                ]
+            ];
+        });
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => [
+                'total' => $total,
+                'page' => (int) $page,
+                'pageSize' => (int) $pageSize,
+                'list' => $list
+            ]
+        ]);
+    }
+
+    /**
+     * 获取未归还列表（管理员功能）
+     * GET /api/admin/bookings/unreturned
+     */
+    public function getUnreturnedBookings(Request $request): JsonResponse
+    {
+        // JWT 认证检查
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token已过期'
+            ], 401);
+        }
+
+        // 检查是否是管理员
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限访问，只有管理员可以查看未归还列表'
+            ], 403);
+        }
+
+        // 获取分页参数
+        $page = $request->input('page', 1);
+        $pageSize = $request->input('pageSize', 10);
+
+        // 获取未归还列表（已通过但未归还）
+        $query = Booking::with(['user' => function($q) {
+                $q->withTrashed();
+            }, 'device' => function($q) {
+                $q->withTrashed();
+            }])
+            ->where('status', Booking::STATUS_APPROVED)
+            ->orderBy('borrow_end', 'asc');
+
+        $total = $query->count();
+        $bookings = $query->forPage($page, $pageSize)->get();
+
+        // 格式化返回数据
+        $list = $bookings->map(function ($booking) {
+            return [
+                'id' => $booking->id,
+                'user_name' => $booking->user->name ?? '',
+                'device_name' => $booking->device->name ?? '',
+                'borrow_start' => $booking->borrow_start,
+                'borrow_end' => $booking->borrow_end,
+                'status' => $booking->status,
+                'created_at' => $booking->created_at,
+                'updated_at' => $booking->updated_at,
+                'user' => [
+                    'id' => $booking->user->id ?? null,
+                    'account' => $booking->user->account ?? '',
+                    'name' => $booking->user->name ?? ''
+                ],
+                'device' => [
+                    'id' => $booking->device->id ?? null,
+                    'name' => $booking->device->name ?? '',
+                ]
+            ];
+        });
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => [
+                'total' => $total,
+                'page' => (int) $page,
+                'pageSize' => (int) $pageSize,
+                'list' => $list
+            ]
+        ]);
+    }
+
+    /**
+     * 获取拒绝归还列表（管理员功能）
+     * GET /api/admin/bookings/return-rejected
+     */
+    public function getReturnRejectedBookings(Request $request): JsonResponse
+    {
+        // JWT 认证检查
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token已过期'
+            ], 401);
+        }
+
+        // 检查是否是管理员
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限访问，只有管理员可以查看拒绝归还列表'
+            ], 403);
+        }
+
+        // 获取分页参数
+        $page = $request->input('page', 1);
+        $pageSize = $request->input('pageSize', 10);
+
+        // 获取拒绝归还列表
+        $query = Booking::with(['user' => function($q) {
+                $q->withTrashed();
+            }, 'device' => function($q) {
+                $q->withTrashed();
+            }])
+            ->where('status', Booking::STATUS_RETURN_REJECTED)
+            ->orderBy('updated_at', 'desc');
+
+        $total = $query->count();
+        $bookings = $query->forPage($page, $pageSize)->get();
+
+        // 格式化返回数据
+        $list = $bookings->map(function ($booking) {
+            return [
+                'id' => $booking->id,
+                'user_name' => $booking->user->name ?? '',
+                'device_name' => $booking->device->name ?? '',
+                'borrow_start' => $booking->borrow_start,
+                'borrow_end' => $booking->borrow_end,
+                'status' => $booking->status,
+                'return_reject_reason' => $booking->return_reject_reason,
+                'created_at' => $booking->created_at,
+                'updated_at' => $booking->updated_at,
+                'user' => [
+                    'id' => $booking->user->id ?? null,
+                    'account' => $booking->user->account ?? '',
+                    'name' => $booking->user->name ?? ''
+                ],
+                'device' => [
+                    'id' => $booking->device->id ?? null,
+                    'name' => $booking->device->name ?? '',
+                ]
+            ];
+        });
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => [
+                'total' => $total,
+                'page' => (int) $page,
+                'pageSize' => (int) $pageSize,
+                'list' => $list
+            ]
+        ]);
     }
 
     /**

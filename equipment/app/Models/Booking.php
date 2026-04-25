@@ -81,11 +81,12 @@ class Booking extends Model
     }
 
     // 状态常量
-    const STATUS_PENDING = 'pending';      // 待审核
-    const STATUS_APPROVED = 'approved';    // 已通过
-    const STATUS_REJECTED = 'rejected';    // 已拒绝
-    const STATUS_RETURNING = 'returning';  // 申请归还（待审核）
-    const STATUS_RETURNED = 'returned';    // 已归还
+    const STATUS_PENDING = 'pending';           // 待审核
+    const STATUS_APPROVED = 'approved';         // 已通过
+    const STATUS_REJECTED = 'rejected';         // 已拒绝
+    const STATUS_RETURNING = 'returning';       // 申请归还（待审核）
+    const STATUS_RETURNED = 'returned';         // 已归还
+    const STATUS_RETURN_REJECTED = 'return_rejected';  // 拒绝归还
 
     /**
      * 关联用户

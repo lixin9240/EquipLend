@@ -61,6 +61,9 @@ use Illuminate\Support\Facades\Route;
     Route::patch('/admin/bookings/{id}/audit', [LXController::class, 'auditBooking']);//审核借用申请
     Route::get('/admin/bookings/returning', [LXController::class, 'getReturningBookings']);//获取待审核归还列表
     Route::patch('/admin/bookings/{id}/return-audit', [LXController::class, 'auditReturnBooking']);//审核归还申请
+    Route::get('/admin/bookings/returned', [LXController::class, 'getReturnedBookings']);//获取已归还列表
+    Route::get('/admin/bookings/unreturned', [LXController::class, 'getUnreturnedBookings']);//获取未归还列表
+    Route::get('/admin/bookings/return-rejected', [LXController::class, 'getReturnRejectedBookings']);//获取拒绝归还列表
 
 
     Route::post('/admin/devices', [LXController::class, 'createDevice']);//创建设备
