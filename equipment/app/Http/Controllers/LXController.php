@@ -358,7 +358,7 @@ class LXController extends \Illuminate\Routing\Controller
         } else {
             // 拒绝归还申请
             $booking->status = Booking::STATUS_RETURN_REJECTED;  // 设置为拒绝归还状态
-            $booking->return_reject_reason = $request->input('reason');  // 拒绝原因
+            $booking->reason = $request->input('reason');  // 拒绝原因（使用 reason 字段）
             $booking->save();
 
             return response()->json([
@@ -366,8 +366,12 @@ class LXController extends \Illuminate\Routing\Controller
                 'message' => '归还申请已拒绝',
                 'data' => [
                     'id' => $booking->id,
+                    'device_name' => $booking->device_name,
+                    'borrow_start' => $booking->borrow_start,
+                    'borrow_end' => $booking->borrow_end,
                     'status' => $booking->status,
-                    'return_reject_reason' => $booking->return_reject_reason
+                    'reason' => $booking->reason,
+                    'updated_at' => $booking->updated_at
                 ]
             ]);
         }
@@ -569,7 +573,83 @@ class LXController extends \Illuminate\Routing\Controller
                 'borrow_start' => $booking->borrow_start,
                 'borrow_end' => $booking->borrow_end,
                 'status' => $booking->status,
-                'return_reject_reason' => $booking->return_reject_reason,
+                'reason' => $booking->reason,
+                'created_at' => $booking->created_at,
+                'updated_at' => $booking->updated_at,
+                'user' => [
+                    'id' => $booking->user->id ?? null,
+                    'account' => $booking->user->account ?? '',
+                    'name' => $booking->user->name ?? ''
+                ],
+                'device' => [
+                    'id' => $booking->device->id ?? null,
+                    'name' => $booking->device->name ?? '',
+                ]
+            ];
+        });
+
+        return response()->json([
+            'code' => 200,
+            'message' => '获取成功',
+            'data' => [
+                'total' => $total,
+                'page' => (int) $page,
+                'pageSize' => (int) $pageSize,
+                'list' => $list
+            ]
+        ]);
+    }
+
+    /**
+     * 获取拒绝借用申请列表（管理员功能）
+     * GET /api/admin/bookings/rejected
+     */
+    public function getRejectedBookings(Request $request): JsonResponse
+    {
+        // JWT 认证检查
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token已过期'
+            ], 401);
+        }
+
+        // 检查是否是管理员
+        if (!$this->isAdmin()) {
+            return response()->json([
+                'code' => 403,
+                'message' => '无权限访问，只有管理员可以查看拒绝借用列表'
+            ], 403);
+        }
+
+        // 获取分页参数
+        $page = $request->input('page', 1);
+        $pageSize = $request->input('pageSize', 10);
+
+        // 获取拒绝借用列表
+        $query = Booking::with(['user' => function($q) {
+                $q->withTrashed();
+            }, 'device' => function($q) {
+                $q->withTrashed();
+            }])
+            ->where('status', Booking::STATUS_REJECTED)
+            ->orderBy('updated_at', 'desc');
+
+        $total = $query->count();
+        $bookings = $query->forPage($page, $pageSize)->get();
+
+        // 格式化返回数据
+        $list = $bookings->map(function ($booking) {
+            return [
+                'id' => $booking->id,
+                'user_name' => $booking->user->name ?? '',
+                'device_name' => $booking->device->name ?? '',
+                'borrow_start' => $booking->borrow_start,
+                'borrow_end' => $booking->borrow_end,
+                'status' => $booking->status,
+                'reason' => $booking->reason,
+                'reason_type' => $booking->reason_type,
                 'created_at' => $booking->created_at,
                 'updated_at' => $booking->updated_at,
                 'user' => [

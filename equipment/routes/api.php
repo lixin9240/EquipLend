@@ -58,6 +58,7 @@ use Illuminate\Support\Facades\Route;
     // 获取待审核申请列表
 
     Route::get('/admin/bookings/pending', [LXController::class, 'getPendingBookings']);//获取待审核申请列表
+    Route::get('/admin/bookings/rejected', [LXController::class, 'getRejectedBookings']);//获取拒绝借用申请列表
     Route::patch('/admin/bookings/{id}/audit', [LXController::class, 'auditBooking']);//审核借用申请
     Route::get('/admin/bookings/returning', [LXController::class, 'getReturningBookings']);//获取待审核归还列表
     Route::patch('/admin/bookings/{id}/return-audit', [LXController::class, 'auditReturnBooking']);//审核归还申请

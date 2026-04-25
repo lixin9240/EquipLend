@@ -54,7 +54,7 @@ class WLJController extends \Illuminate\Routing\Controller
                 'name' => $device->name,
                 'category' => $categories[$device->category] ?? $device->category,
                 'status' => $device->status,
-                'stock' => $device->available_qty,  // 库存（可借数量）
+                'available_qty' => $device->available_qty,  // 库存（可借数量）
             ];
         });
 
