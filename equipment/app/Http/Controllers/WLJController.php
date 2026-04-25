@@ -184,11 +184,10 @@ class WLJController extends \Illuminate\Routing\Controller
             ]);
         }
 
-        // 创建借用申请（保存设备名称冗余字段）
+        // 创建借用申请
         $booking = Booking::create([
             'user_id' => Auth::id(),
             'device_id' => $request->device_id,
-            'device_name' => $device->name,
             'borrow_start' => $request->borrow_start,
             'borrow_end' => $request->borrow_end,
             'purpose' => $request->purpose,
