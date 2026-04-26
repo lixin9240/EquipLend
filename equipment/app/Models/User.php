@@ -30,6 +30,7 @@ class User extends Authenticatable implements JWTSubject
         'role',// 角色（学生 / 管理员）
         'phone',// 手机号
         'email',// 邮箱
+        'avatar',// 头像
     ];
 
     protected $hidden = [

@@ -188,6 +188,7 @@ class LZWController extends Controller
                 'name' => $user->name,
                 'role' => $user->role,
                 'email' => $user->email,
+                'avatar' => $user->avatar,
             ]
         ]);
     }
@@ -447,6 +448,77 @@ class LZWController extends Controller
             return response()->json([
                 'code' => 500,
                 'message' => '服务器错误: ' . $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
+    }
+
+    /**
+     * 上传头像
+     * 接口: POST /api/auth/avatar
+     */
+    public function uploadAvatar(Request $request)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'message' => '未登录或token无效',
+                'data' => null
+            ], 401);
+        }
+
+        // 验证上传的文件
+        try {
+            $validated = $request->validate([
+                'avatar' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048',
+            ], [
+                'avatar.required' => '请上传头像文件',
+                'avatar.image' => '上传的文件必须是图片',
+                'avatar.mimes' => '头像仅支持 jpg、jpeg、png、gif 格式',
+                'avatar.max' => '头像文件大小不能超过2MB',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'code' => 422,
+                'message' => '验证失败',
+                'data' => $e->errors()
+            ], 422);
+        }
+
+        try {
+            // 删除旧头像（如果存在且不是默认头像）
+            if ($user->avatar && !str_contains($user->avatar, 'default')) {
+                $oldPath = str_replace('/storage/', '', $user->avatar);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($oldPath)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
+                }
+            }
+
+            // 存储新头像
+            $file = $request->file('avatar');
+            $fileName = 'avatars/' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('', $fileName, 'public');
+
+            // 生成访问URL
+            $avatarUrl = '/storage/' . $path;
+
+            // 更新用户头像
+            $user->update(['avatar' => $avatarUrl]);
+
+            return response()->json([
+                'code' => 200,
+                'message' => '头像上传成功',
+                'data' => [
+                    'avatar' => $avatarUrl
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'message' => '头像上传失败: ' . $e->getMessage(),
                 'data' => null
             ], 500);
         }

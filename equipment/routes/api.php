@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Route;
     Route::get('/auth/me', [LZWController::class, 'me']);//获取当前用户信息
     Route::post('/auth/logout', [LZWController::class, 'logout']);//退出登录
     Route::put('/auth/profile', [LZWController::class, 'updateProfile']);//更新用户信息
+    Route::post('/auth/avatar', [LZWController::class, 'uploadAvatar']);//上传头像
     // 管理员接口
 
             Route::get('/admin/users', [LZWController::class, 'adminUsers']);
