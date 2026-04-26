@@ -76,26 +76,38 @@ class LZWController extends Controller
         }
         cache()->forget($cacheKey);
 
-        // 检查账号是否重复
-        if (User::where('account', $validated['account'])->exists()) {
-            return response()->json([
-                'code' => 400,
-                'message' => '账号已存在',
-                'data' => null
+        // 检查账号是否已存在（包括软删除的）
+        $existingUser = User::withTrashed()->where('account', $validated['account'])->first();
+
+        if ($existingUser) {
+            if (is_null($existingUser->deleted_at)) {
+                // 账号存在且未删除
+                return response()->json([
+                    'code' => 400,
+                    'message' => '账号已存在',
+                    'data' => null
+                ]);
+            }
+
+            // 账号已被软删除，恢复并更新信息
+            $existingUser->restore();
+            $existingUser->update([
+                'name' => $validated['name'],
+                'password' => $validated['password'],
+                'email' => $validated['email'] ?? null,
+                'role' => 'student',
+            ]);
+            $user = $existingUser;
+        } else {
+            // 创建新用户
+            $user = User::create([
+                'account' => $validated['account'],
+                'name' => $validated['name'],
+                'password' => $validated['password'],
+                'email' => $validated['email'] ?? null,
+                'role' => 'student',
             ]);
         }
-
-        $user = User::create([
-            'account' => $validated['account'],
-            'name' => $validated['name'],
-            'password' => $validated['password'],
-            'email' => $validated['email'] ?? null,
-
-            // ###########################
-            // 第2处修改：强制写死角色为 student
-            // ###########################
-            'role' => 'student',  // 这里写死！永远不会是管理员！
-        ]);
 
         return response()->json([
             'code' => 200,

@@ -28,8 +28,7 @@ class WLJController extends \Illuminate\Routing\Controller
         if ($request->has('name')) {
             $keyword = $request->input('name');
             $query->where(function ($q) use ($keyword) {
-                $q->where('name', 'like', '%' . $keyword . '%')
-                  ->orWhere('description', 'like', '%' . $keyword . '%');
+                $q->where('device_name', 'like', '%' . $keyword . '%');
             });
         }
 
