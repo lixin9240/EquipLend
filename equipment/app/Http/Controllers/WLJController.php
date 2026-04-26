@@ -5,14 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Device;
 use App\Models\Booking;
 use App\Models\User;
+use App\Services\EmailVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class WLJController extends \Illuminate\Routing\Controller
 {
+    protected EmailVerificationService $emailVerificationService;
+
+    public function __construct(EmailVerificationService $emailVerificationService)
+    {
+        $this->emailVerificationService = $emailVerificationService;
+    }
     // 获取设备列表（分页+筛选）
     public function getDevices(Request $request)
+
     {
         $query = Device::query();
 
@@ -301,6 +309,62 @@ class WLJController extends \Illuminate\Routing\Controller
             return response()->json([
                 'code' => 401,
                 'message' => '未登录',
+                'data' => null
+            ]);
+        }
+
+        // 验证请求参数
+        try {
+            $validated = $request->validate([
+                'account' => 'required|string|min:4|max:20',
+                'email' => 'required|email',
+                'email_code' => 'required|string|size:6',
+            ], [
+                'account.required' => '账号不能为空',
+                'account.min' => '账号至少4个字符',
+                'account.max' => '账号最多20个字符',
+                'email.required' => '邮箱不能为空',
+                'email.email' => '邮箱格式不正确',
+                'email_code.required' => '邮箱验证码不能为空',
+                'email_code.size' => '邮箱验证码必须是6位',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'code' => 422,
+                'message' => '验证失败',
+                'data' => $e->errors()
+            ], 422);
+        }
+
+        // 验证账号是否匹配当前用户
+        if ($validated['account'] !== $user->account) {
+            return response()->json([
+                'code' => 400,
+                'message' => '账号与当前登录账号不匹配',
+                'data' => null
+            ]);
+        }
+
+        // 验证邮箱是否匹配当前用户
+        if ($validated['email'] !== $user->email) {
+            return response()->json([
+                'code' => 400,
+                'message' => '邮箱与当前账号不匹配',
+                'data' => null
+            ]);
+        }
+
+        // 验证邮箱验证码
+        $isValid = $this->emailVerificationService->verifyCode(
+            $validated['email'],
+            $validated['email_code'],
+            'delete_account'
+        );
+
+        if (!$isValid) {
+            return response()->json([
+                'code' => 400,
+                'message' => '邮箱验证码无效或已过期',
                 'data' => null
             ]);
         }

@@ -375,7 +375,7 @@ class LZWController extends Controller
         try {
             $validated = $request->validate([
                 'email' => 'required|email',
-                'type' => 'nullable|string|in:register,reset_password,bind',//验证码类型，注册，重置密码，绑定新邮箱等
+                'type' => 'nullable|string|in:register,reset_password,bind,delete_account',//验证码类型，注册，重置密码，绑定新邮箱，注销账号等
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -403,6 +403,17 @@ class LZWController extends Controller
 
             case 'reset_password':
                 // 重置密码时检查邮箱是否存在
+                if (!User::where('email', $email)->exists()) {
+                    return response()->json([
+                        'code' => 400,
+                        'message' => '该邮箱未注册',
+                        'data' => null
+                    ]);
+                }
+                break;
+
+            case 'delete_account':
+                // 注销账号时检查邮箱是否存在
                 if (!User::where('email', $email)->exists()) {
                     return response()->json([
                         'code' => 400,
