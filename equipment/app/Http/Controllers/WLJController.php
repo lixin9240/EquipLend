@@ -18,11 +18,11 @@ class WLJController extends \Illuminate\Routing\Controller
     {
         $this->emailVerificationService = $emailVerificationService;
     }
-    // 获取设备列表（分页+筛选）
+    // 获取设备列表（分页+筛选）- 使用实时库存视图
     public function getDevices(Request $request)
-
     {
-        $query = Device::query();
+        // 从实时库存视图查询
+        $query = \Illuminate\Support\Facades\DB::table('device_realtime_stock');
 
         // 筛选条件
         if ($request->has('name')) {
@@ -57,12 +57,18 @@ class WLJController extends \Illuminate\Routing\Controller
         $categories = \App\Models\Category::pluck('name', 'code')->toArray();
         
         $list = collect($devices->items())->map(function ($device) use ($categories) {
+            // 使用视图中的实时库存
+            $realtimeQty = (int) $device->realtime_available_qty;
+
+            // 根据实时库存判断状态：库存为0时显示无空闲
+            $status = $realtimeQty <= 0 ? 'unavailable' : $device->status;
+
             return [
                 'id' => $device->id,  // 设备ID，用于前端提交借用申请
-                'name' => $device->name,
+                'name' => $device->device_name,  // 视图中字段名为 device_name
                 'category' => $categories[$device->category] ?? $device->category,
-                'status' => $device->status,
-                'available_qty' => $device->available_qty,  // 库存（可借数量）
+                'status' => $status,  // 根据实时库存计算的状态
+                'available_qty' => $realtimeQty,  // 实时库存（可借数量）
             ];
         });
 
@@ -192,10 +198,11 @@ class WLJController extends \Illuminate\Routing\Controller
             ]);
         }
 
-        // 创建借用申请
+        // 创建借用申请（保存设备名称冗余字段）
         $booking = Booking::create([
             'user_id' => Auth::id(),
             'device_id' => $request->device_id,
+            'device_name' => $device->name,  // 冗余存储设备名称
             'borrow_start' => $request->borrow_start,
             'borrow_end' => $request->borrow_end,
             'purpose' => $request->purpose,
@@ -227,28 +234,35 @@ class WLJController extends \Illuminate\Routing\Controller
 
         // 格式化数据
         $list = $bookings->map(function ($booking) {
-            // 获取分类详细信息
-            $category = \App\Models\Category::where('code', $booking->device->category)->first();
+            // 设备可能已被删除（软删除），需要做空值检查
+            $device = $booking->device;
+            $category = null;
+
+            if ($device) {
+                $category = \App\Models\Category::where('code', $device->category)->first();
+            }
 
             return [
                 'id' => $booking->id,
-                'device_name' => $booking->device->name,
+                'device_name' => $device ? $device->name : $booking->device_name, // 使用冗余字段或显示已删除
                 'borrow_start' => $booking->borrow_start,
                 'borrow_end' => $booking->borrow_end,
                 'purpose' => $booking->purpose,
                 'status' => $booking->status,
+                'reason' => $booking->reason,           // 拒绝原因
+                'reason_type' => $booking->reason_type, // 拒绝原因类型
                 'created_at' => $booking->created_at,
-                'device' => [
-                    'id' => $booking->device->id,
-                    'name' => $booking->device->name,
-                    'category_code' => $booking->device->category,
+                'device' => $device ? [
+                    'id' => $device->id,
+                    'name' => $device->name,
+                    'category_code' => $device->category,
                     'category' => $category ? [
                         'id' => $category->id,
                         'name' => $category->name,
                         'code' => $category->code,
                         'description' => $category->description,
                     ] : null,
-                ]
+                ] : null, // 设备已删除时返回 null
             ];
         });
 

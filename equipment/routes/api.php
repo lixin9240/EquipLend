@@ -15,8 +15,7 @@ use Illuminate\Support\Facades\Route;
 
     // 分类接口
     Route::group(['middleware' => 'jwt.auth', 'prefix' => 'categories'], function () {
-        Route::get('/', [LXController::class, 'getCategories']);           // 获取分类列表（管理员功能）
-        Route::get('/all', [LXController::class, 'getAllCategories']);         // 获取所有启用的分类（普通用户）
+        Route::get('/', [LXController::class, 'getCategories']);           // 获取分类列表（管理员和学生均可访问）
         Route::get('/statistics', [LXController::class, 'getCategoryStatistics']); // 分类统计
         Route::get('/{id}', [LXController::class, 'getCategory']);       // 获取分类详情
     });

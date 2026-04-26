@@ -253,6 +253,7 @@ class LXController extends \Illuminate\Routing\Controller
         // 获取设备信息
         $device = \App\Models\Device::find($booking->device_id);
         $deviceName = $device ? $device->name : '未知设备';
+        $deviceCategory = $device ? $device->category : null;
 
         if ($action === 'approve') {
             // 批准申请
@@ -266,6 +267,7 @@ class LXController extends \Illuminate\Routing\Controller
                     'id' => $booking->id,
                     'device_id' => $booking->device_id,
                     'device_name' => $deviceName,
+                    'device_category' => $deviceCategory,  // 设备类型/分类
                     'status' => $booking->status,
                     'borrow_start' => $booking->borrow_start,
                     'borrow_end' => $booking->borrow_end,
@@ -288,6 +290,7 @@ class LXController extends \Illuminate\Routing\Controller
                     'id' => $booking->id,
                     'device_id' => $booking->device_id,
                     'device_name' => $deviceName,
+                    'device_category' => $deviceCategory,  // 设备类型/分类
                     'status' => $booking->status,
                     'reason' => $booking->reason,
                     'reason_type' => $reasonType,
@@ -888,21 +891,17 @@ class LXController extends \Illuminate\Routing\Controller
     // =======================================
 
     /**
-     * 获取分类列表（管理员功能，需认证）
+     * 获取分类列表（管理员和学生均可访问）
      * GET /api/categories
      */
     public function getCategories(Request $request): JsonResponse
     {
-        // 验证是否为管理员
-        if (!$this->isAdmin()) {
-            return response()->json([
-                'code' => 403,
-                'message' => '权限不足，仅管理员可访问',
-                'data' => null
-            ], 403);
-        }
-
         $query = Category::query();
+
+        // 非管理员只能看到启用的分类
+        if (!$this->isAdmin()) {
+            $query->where('is_active', true);
+        }
 
         // 搜索
         if ($request->has('keyword')) {
@@ -927,33 +926,10 @@ class LXController extends \Illuminate\Routing\Controller
 
         $categories = $query->paginate($pageSize, ['*'], 'page', $page);
 
-        // 获取每个分类的详细信息
+        // 获取每个分类的基本信息（简化版，不包含设备列表）
         $list = $categories->map(function ($category) {
-            // 获取该分类下的设备统计
-            $devices = Device::where('category', $category->code)->get();
-            $totalDevices = $devices->count();
-            $availableDevices = $devices->where('status', 'available')->count();
-            $borrowedDevices = $devices->where('status', 'borrowed')->count();
-            $maintenanceDevices = $devices->where('status', 'maintenance')->count();
-
-            // 获取该分类下的设备列表（简要信息）
-            $deviceList = $devices->take(5)->map(function ($device) {
-                // 实时计算库存：总库存 - 已批准但未归还的借用数量
-                $borrowedCount = \App\Models\Booking::where('device_id', $device->id)
-                    ->whereIn('status', ['approved', 'pending'])
-                    ->count();
-                $realAvailableQty = $device->total_qty - $borrowedCount;
-
-                return [
-                    'id' => $device->id,
-                    'name' => $device->name,
-                    'status' => $device->status,
-                    'total_qty' => $device->total_qty,
-                    'available_qty' => $device->available_qty,
-                    'real_available_qty' => $realAvailableQty,  // 实时计算的可用数量
-                    'borrowed_count' => $borrowedCount,         // 已借出数量
-                ];
-            });
+            // 只统计设备数量
+            $totalDevices = Device::where('category', $category->code)->count();
 
             return [
                 'id' => $category->id,
@@ -962,18 +938,9 @@ class LXController extends \Illuminate\Routing\Controller
                 'description' => $category->description,
                 'sort_order' => $category->sort_order,
                 'is_active' => $category->is_active,
+                'device_count' => $totalDevices,  // 仅返回设备数量
                 'created_at' => $category->created_at,
                 'updated_at' => $category->updated_at,
-                // 设备统计信息
-                'statistics' => [
-                    'total_devices' => $totalDevices,           // 设备总数
-                    'available_devices' => $availableDevices,   // 可用设备数
-                    'borrowed_devices' => $borrowedDevices,     // 借出设备数
-                    'maintenance_devices' => $maintenanceDevices, // 维修中设备数
-                ],
-                // 设备列表（最多显示5个）
-                'devices' => $deviceList,
-                'has_more_devices' => $totalDevices > 5,        // 是否有更多设备
             ];
         });
 
@@ -986,21 +953,6 @@ class LXController extends \Illuminate\Routing\Controller
                 'pageSize' => $categories->perPage(),
                 'list' => $list
             ]
-        ]);
-    }
-
-    /**
-     * 获取所有启用的分类（普通用户可用，需认证）
-     * GET /api/categories/all
-     */
-    public function getAllCategories(): JsonResponse
-    {
-        $categories = Category::active()->ordered()->get(['id', 'name', 'code', 'description']);
-
-        return response()->json([
-            'code' => 200,
-            'message' => '获取成功',
-            'data' => $categories
         ]);
     }
 
@@ -1020,9 +972,26 @@ class LXController extends \Illuminate\Routing\Controller
         }
 
         // 获取该分类下的设备
-        $devices = Device::where('category', $category->code)
-            ->select('id', 'name', 'total_qty', 'available_qty', 'status')
-            ->get();
+        $devices = Device::where('category', $category->code)->get();
+
+        // 格式化设备数据，添加实时库存计算
+        $deviceList = $devices->map(function ($device) {
+            // 实时计算库存：总库存 - 已批准但未归还的借用数量
+            $borrowedCount = \App\Models\Booking::where('device_id', $device->id)
+                ->whereIn('status', ['approved', 'pending'])
+                ->count();
+            $realAvailableQty = $device->total_qty - $borrowedCount;
+
+            return [
+                'id' => $device->id,
+                'name' => $device->name,
+                'status' => $device->status,
+                'total_qty' => $device->total_qty,
+                'available_qty' => $device->available_qty,
+                'real_available_qty' => $realAvailableQty,  // 实时计算的可用数量
+                'borrowed_count' => $borrowedCount,         // 已借出数量
+            ];
+        });
 
         return response()->json([
             'code' => 200,
@@ -1035,8 +1004,8 @@ class LXController extends \Illuminate\Routing\Controller
                 'sort_order' => $category->sort_order,//排序顺序
                 'is_active' => $category->is_active,//是否启用
                 'device_count' => $devices->count(),//设备数量
-                'devices' => $devices,//设备列表
-                'created_at' => $category->created_at,// => $category->created_at,
+                'devices' => $deviceList,//设备列表（包含实时库存）
+                'created_at' => $category->created_at,
                 'updated_at' => $category->updated_at,
             ]
         ]);

@@ -25,6 +25,7 @@ class Device extends Model
         'total_qty',// 总库存
         'available_qty',// 可借数量
         'status',// 设备状态
+        'realtime_available_qty',// 实时可借数量（视图计算字段）
     ];
 
     protected $casts = [
