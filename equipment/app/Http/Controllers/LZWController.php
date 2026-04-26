@@ -330,7 +330,7 @@ class LZWController extends Controller
 
         $validated = $request->validate([
             'name' => 'nullable|string',
-            'username' => 'nullable|string|unique:users,username,' . $user->id,
+            'account' => 'nullable|string|unique:users,account,' . $user->id,
             'email' => 'nullable|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|regex:/^1[3-9]\d{9}$/|unique:users,phone,' . $user->id,
             'password' => 'nullable|string|min:6',
@@ -341,9 +341,9 @@ class LZWController extends Controller
             $user->name = $validated['name'];
         }
 
-        // 如果传了username就更新
-        if (!empty($validated['username'])) {
-            $user->username = $validated['username'];
+        // 如果传了account就更新
+        if (!empty($validated['account'])) {
+            $user->account = $validated['account'];
         }
 
         // 如果传了email就更新
@@ -369,7 +369,6 @@ class LZWController extends Controller
             'data' => [
                 'id' => $user->id,
                 'account' => $user->account,
-                'username' => $user->username,
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
